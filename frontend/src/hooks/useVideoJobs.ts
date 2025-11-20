@@ -47,6 +47,7 @@ export function useVideoJobs(options: UseVideoJobsOptions = {}) {
   
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const previousJobsRef = useRef<Map<string, VideoJobStatus>>(new Map())
+  const isFetchingRef = useRef<boolean>(false)
   const notifications = useNotifications()
 
   const fetchVideoJobs = useCallback(async () => {
@@ -57,6 +58,13 @@ export function useVideoJobs(options: UseVideoJobsOptions = {}) {
       return
     }
 
+    // Защита от множественных одновременных запросов
+    if (isFetchingRef.current) {
+      console.log('[useVideoJobs] Already fetching, skipping duplicate request')
+      return
+    }
+
+    isFetchingRef.current = true
     setLoading(true)
     try {
       const params = new URLSearchParams()
