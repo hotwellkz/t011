@@ -66,9 +66,11 @@ export function useNotifications() {
       audioRef.current = audio
       
       // Пробуем загрузить аудио (может не сработать если файла нет, но это нормально)
-      audio.load().catch(() => {
-        console.warn('[Notifications] Audio file not found, will use fallback')
-      })
+      try {
+        audio.load()
+      } catch (loadError) {
+        console.warn('[Notifications] Audio file not found, will use fallback:', loadError)
+      }
     } catch (error) {
       console.warn('[Notifications] Failed to initialize audio:', error)
     }
@@ -81,7 +83,6 @@ export function useNotifications() {
     const soundEnabled = localStorage.getItem(STORAGE_KEY_SOUND) === 'true'
     const browserEnabled = localStorage.getItem(STORAGE_KEY_BROWSER) === 'true'
     const pushEnabled = localStorage.getItem(STORAGE_KEY_PUSH) === 'true'
-    const permissionAsked = localStorage.getItem(STORAGE_KEY_PERMISSION_ASKED) === 'true'
     
     let permissionGranted = false
     if (typeof Notification !== 'undefined') {
