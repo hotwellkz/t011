@@ -106,8 +106,8 @@ export const VideoJobsList: React.FC<VideoJobsListProps> = ({
 
   return (
     <div style={{ marginTop: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h3 style={{ margin: 0 }}>
+      <div style={{ marginBottom: '1rem' }}>
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>
           Текущие и последние генерации ({activeJobsCount}/{maxActiveJobs} активных)
         </h3>
         
@@ -116,7 +116,7 @@ export const VideoJobsList: React.FC<VideoJobsListProps> = ({
           <div className="filter-sort-controls">
             <input
               type="text"
-              placeholder="🔍 Поиск по названию или промпту..."
+              placeholder="🔍 Поиск..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ flex: 1, minWidth: '200px' }}
