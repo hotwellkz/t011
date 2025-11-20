@@ -773,6 +773,25 @@ const VideoGeneration: React.FC = () => {
     }
   }
 
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      const response = await apiFetch(`/api/video-jobs/${jobId}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || errorData.error || `Ошибка ${response.status}`)
+      }
+      
+      toast.success('Задача удалена')
+      await fetchVideoJobs()
+    } catch (err: any) {
+      console.error(`[VideoJob] Error deleting job ${jobId}:`, err)
+      toast.error(err.message || 'Не удалось удалить задачу')
+    }
+  }
+
   // Копирование промпта в буфер обмена
   const handleCopyPrompt = async () => {
     if (!veoPrompt.trim()) {
@@ -1593,6 +1612,7 @@ const VideoGeneration: React.FC = () => {
             loading={loading}
             onApprove={handleApproveJob}
             onReject={handleRejectJob}
+            onDelete={handleDeleteJob}
             rejectingJobId={rejectingJobId}
             showChannelName={false}
           />

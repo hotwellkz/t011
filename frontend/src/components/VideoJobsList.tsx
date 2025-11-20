@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import '../App.css'
 import { VideoJob, VideoJobStatus } from '../hooks/useVideoJobs'
+import { SwipeableJobCard } from './SwipeableJobCard'
 
 interface VideoJobsListProps {
   jobs: VideoJob[]
@@ -9,6 +10,7 @@ interface VideoJobsListProps {
   loading?: boolean
   onApprove?: (jobId: string, jobTitle?: string) => Promise<void>
   onReject?: (jobId: string) => Promise<void>
+  onDelete?: (jobId: string) => Promise<void>
   rejectingJobId?: string | null
   showChannelName?: boolean
 }
@@ -20,6 +22,7 @@ export const VideoJobsList: React.FC<VideoJobsListProps> = ({
   loading = false,
   onApprove,
   onReject,
+  onDelete,
   rejectingJobId = null,
   showChannelName = false,
 }) => {
@@ -154,93 +157,20 @@ export const VideoJobsList: React.FC<VideoJobsListProps> = ({
             const canApprove = job.status === 'ready'
             
             return (
-              <div
+              <SwipeableJobCard
                 key={job.id}
-                className={`job-card ${isActive ? 'job-card--active' : ''}`}
-                data-job-id={job.id}
-              >
-                <div className="job-card__header">
-                  <div className="job-card__info">
-                    <h4>
-                      {job.videoTitle || job.prompt.substring(0, 60) + (job.prompt.length > 60 ? '...' : '')}
-                    </h4>
-                    {job.videoTitle && (
-                      <p className="job-card__prompt">
-                        {job.prompt.substring(0, 100) + (job.prompt.length > 100 ? '...' : '')}
-                      </p>
-                    )}
-                    {showChannelName && job.channelName && (
-                      <p style={{ fontSize: '0.875rem', color: '#718096', marginTop: '0.25rem' }}>
-                        Канал: {job.channelName}
-                      </p>
-                    )}
-                    <div className="job-card__status">
-                      <span
-                        className="job-card__status-dot"
-                        style={{ background: getStatusColor(job.status) }}
-                      />
-                      <span style={{ color: getStatusColor(job.status) }}>
-                        {getStatusLabel(job.status)}
-                      </span>
-                      {job.errorMessage && (
-                        <span className="job-card__error">
-                          {job.errorMessage}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="job-card__timestamp">
-                    {new Date(job.createdAt).toLocaleString('ru-RU')}
-                  </div>
-                </div>
-
-                {/* Превью видео для готовых задач */}
-                {job.status === 'ready' && job.previewUrl && (
-                  <div className="job-card__preview">
-                    <video
-                      src={job.previewUrl}
-                      controls
-                      className="video-preview"
-                    />
-                  </div>
-                )}
-
-                {/* Действия для готовых задач */}
-                {canApprove && onApprove && (
-                  <div className="job-card__actions">
-                    <button
-                      className="button button-success"
-                      onClick={() => onApprove(job.id, job.videoTitle)}
-                      disabled={loading || job.status === 'uploaded'}
-                    >
-                      ✅ Одобрить и отправить в Google Drive
-                    </button>
-                    {onReject && (
-                      <button
-                        className="button button-danger"
-                        onClick={() => onReject(job.id)}
-                        disabled={loading || rejectingJobId === job.id}
-                        title={rejectingJobId === job.id ? 'Отклонение...' : 'Отклонить видео'}
-                      >
-                        {rejectingJobId === job.id ? '⏳ Отклонение...' : '🗑 Отклонить'}
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Ссылка на Google Drive для загруженных */}
-                {job.status === 'uploaded' && job.webViewLink && (
-                  <div className="job-card__link">
-                    <a
-                      href={job.webViewLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Открыть в Google Drive
-                    </a>
-                  </div>
-                )}
-              </div>
+                job={job}
+                isActive={isActive}
+                canApprove={canApprove}
+                getStatusLabel={getStatusLabel}
+                getStatusColor={getStatusColor}
+                showChannelName={showChannelName}
+                onApprove={onApprove}
+                onReject={onReject}
+                onDelete={onDelete}
+                loading={loading}
+                rejectingJobId={rejectingJobId}
+              />
             )
           })}
         </div>

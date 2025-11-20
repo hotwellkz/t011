@@ -403,6 +403,67 @@ function collectAllFilePaths(job: any): string[] {
   return Array.from(paths);
 }
 
+/**
+ * DELETE /api/video-jobs/:id
+ * Удалить задачу генерации видео
+ */
+router.delete("/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    console.log(`[VideoJob] Delete request received for job ${id}`);
+
+    const job = await getJob(id);
+
+    if (!job) {
+      console.error(`[VideoJob] Job ${id} not found for deletion`);
+      return res.status(404).json({
+        success: false,
+        message: "Video job not found",
+      });
+    }
+
+    // Удаляем локальные файлы
+    const removedFiles: string[] = [];
+    const fileCandidates = collectAllFilePaths(job);
+    for (const candidate of fileCandidates) {
+      const deleted = deleteLocalFileSafe(candidate);
+      if (deleted) {
+        removedFiles.push(candidate);
+      }
+    }
+
+    // Удаляем из Firestore (каскадное удаление)
+    const deletedFromDb = await deleteJobCascade(id);
+    if (!deletedFromDb) {
+      console.error(`[VideoJob] ⚠️  deleteJobCascade returned false for job ${id}`);
+      return res.status(404).json({
+        success: false,
+        message: "Job не найден в базе данных",
+      });
+    }
+
+    console.log(
+      `[VideoJob] ✅ Job ${id} deleted completely (doc + subcollections + files: ${removedFiles.length})`
+    );
+
+    res.json({
+      success: true,
+      jobId: id,
+      deletedFiles: removedFiles,
+    });
+  } catch (error: any) {
+    console.error(`[VideoJob] ❌ Error deleting job ${id}:`, error);
+    console.error(`[VideoJob] Error stack:`, error?.stack);
+    const errorMessage = error?.message || error?.toString() || "Неизвестная ошибка";
+    res.status(500).json({
+      success: false,
+      message: "Ошибка при удалении задачи",
+      error: errorMessage,
+    });
+  }
+});
+
 function deleteLocalFileSafe(filePath?: string): boolean {
   if (!filePath) {
     return false;

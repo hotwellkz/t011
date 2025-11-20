@@ -718,6 +718,185 @@
   }
 }
 
+/* Swipeable Job Card Styles */
+.swipeable-job-card-wrapper {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.swipeable-job-card {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+.swipeable-job-card.swiping {
+  cursor: grabbing;
+}
+
+.swipeable-job-card__delete-action {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  background: #f56565;
+  z-index: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.swipeable-job-card__delete-button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swipeable-job-card__delete-button:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Кнопка удаления для десктопа */
+.job-card {
+  position: relative;
+}
+
+.job-card__delete-desktop {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(245, 101, 101, 0.1);
+  border: 1px solid rgba(245, 101, 101, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+  z-index: 10;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.job-card__delete-desktop:hover {
+  background: rgba(245, 101, 101, 0.2);
+  border-color: rgba(245, 101, 101, 0.5);
+  transform: scale(1.1);
+}
+
+.job-card__delete-desktop:active {
+  transform: scale(0.95);
+}
+
+/* Скрываем кнопку удаления на мобильных */
+@media (max-width: 768px) {
+  .job-card__delete-desktop {
+    display: none;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: #1a202c;
+  font-size: 1.25rem;
+}
+
+.modal-content p {
+  margin: 0 0 1.5rem 0;
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-actions .button {
+  margin: 0;
+  min-width: 100px;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+  
+  .modal-content h3 {
+    font-size: 1.1rem;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .modal-actions .button {
+    width: 100%;
+  }
+  
+  .swipeable-job-card__delete-action {
+    width: 100px;
+  }
+}
+
 /* Toast Notifications */
 .toast-container {
   position: fixed;

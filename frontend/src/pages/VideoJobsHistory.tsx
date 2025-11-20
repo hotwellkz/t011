@@ -69,6 +69,24 @@ const VideoJobsHistory: React.FC = () => {
     }
   }
 
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      const response = await apiFetch(`/api/video-jobs/${jobId}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || errorData.error || `Ошибка ${response.status}`)
+      }
+      
+      toast.success('Задача удалена')
+      await refreshJobs()
+    } catch (err: any) {
+      toast.error(err.message || 'Не удалось удалить задачу')
+    }
+  }
+
   return (
     <div className="card">
       <h2>История генераций</h2>
@@ -86,6 +104,7 @@ const VideoJobsHistory: React.FC = () => {
         loading={loading}
         onApprove={handleApproveJob}
         onReject={handleRejectJob}
+        onDelete={handleDeleteJob}
         rejectingJobId={rejectingJobId}
         showChannelName={true}
       />
