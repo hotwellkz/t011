@@ -9,6 +9,7 @@ import videoJobsRouter from "./api/videoJobs";
 import transcribeRouter from "./api/transcribe";
 import titleRouter from "./api/title";
 import fcmRouter from "./api/fcm";
+import automationRouter from "./api/automation";
 import { getTelegramClient } from "./telegram/client";
 import { initializeFirebase } from "./firebase/admin";
 
@@ -36,6 +37,7 @@ app.use("/api/video-jobs", videoJobsRouter);
 app.use("/api/transcribe-idea", transcribeRouter);
 app.use("/api/generate-title", titleRouter);
 app.use("/api/fcm", fcmRouter);
+app.use("/api/automation", automationRouter);
 
 // Health check
 app.get("/health", (req, res) => {

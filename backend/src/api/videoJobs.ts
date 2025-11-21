@@ -84,6 +84,69 @@ async function processVideoGeneration(jobId: string): Promise<void> {
 
     console.log(`[VideoJob] Job ${jobId} completed successfully`);
 
+    // Автоматическое одобрение для автоматических задач
+    if (updatedJob && updatedJob.isAuto && updatedJob.channelId) {
+      try {
+        const channel = await getChannelById(updatedJob.channelId);
+        if (
+          channel &&
+          channel.automation?.enabled &&
+          channel.automation?.autoApproveAndUpload
+        ) {
+          console.log(
+            `[VideoJob] Job ${jobId} is auto, starting auto-approval...`
+          );
+
+          // Обновляем статус на uploading
+          await updateJob(jobId, { status: "uploading" });
+
+          // Генерируем имя файла
+          const fileName = updatedJob.videoTitle
+            ? getSafeFileName(updatedJob.videoTitle)
+            : `video_${jobId}_${Date.now()}.mp4`;
+
+          // Определяем папку Google Drive
+          let targetFolderId: string | null | undefined = null;
+          if (channel.gdriveFolderId) {
+            targetFolderId = channel.gdriveFolderId;
+            console.log(
+              `[VideoJob] Using folder from channel ${updatedJob.channelId}: ${targetFolderId}`
+            );
+          }
+
+          // Загружаем в Google Drive
+          const driveResult = await uploadFileToDrive(
+            syntxResult.localPath,
+            fileName,
+            targetFolderId
+          );
+
+          console.log(
+            `[VideoJob] Auto-uploaded to Google Drive: ${driveResult.fileId}`
+          );
+
+          // Обновляем job
+          await updateJob(jobId, {
+            status: "uploaded",
+            driveFileId: driveResult.fileId,
+            webViewLink: driveResult.webViewLink,
+            webContentLink: driveResult.webContentLink,
+          });
+
+          console.log(
+            `[VideoJob] ✅ Job ${jobId} auto-approved and uploaded successfully`
+          );
+        }
+      } catch (autoApproveError: any) {
+        console.error(
+          `[VideoJob] Error in auto-approval for job ${jobId}:`,
+          autoApproveError
+        );
+        // Откатываем статус на ready, если авто-одобрение не удалось
+        await updateJob(jobId, { status: "ready" });
+      }
+    }
+
     // Отправляем FCM уведомление о готовности видео
     if (updatedJob) {
       const { notifyVideoReady } = await import("../firebase/fcmService");

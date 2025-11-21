@@ -8,6 +8,17 @@ import { VideoJobsList } from './VideoJobsList'
 
 type Language = 'ru' | 'kk' | 'en'
 
+interface ChannelAutomation {
+  enabled: boolean
+  frequencyPerDay: number
+  times: string[]
+  daysOfWeek: string[]
+  autoApproveAndUpload: boolean
+  useOnlyFreshIdeas: boolean
+  maxActiveTasks: number
+  lastRunAt?: number | null
+}
+
 interface Channel {
   id: string
   name: string
@@ -18,6 +29,7 @@ interface Channel {
   videoPromptTemplate: string
   gdriveFolderId?: string | null
   externalUrl?: string | undefined
+  automation?: ChannelAutomation
 }
 
 interface Idea {
@@ -1139,7 +1151,14 @@ const VideoGeneration: React.FC = () => {
                       <div className="channel-card__number">
                         {String(index + 1).padStart(2, '0')}
                       </div>
-                      <h3 className="channel-card__title">{channel.name}</h3>
+                      <h3 className="channel-card__title">
+                        {channel.name}
+                        {channel.automation?.enabled && (
+                          <span className="channel-card__auto-badge" title="Автоматизация включена">
+                            ⏱ AUTO
+                          </span>
+                        )}
+                      </h3>
                     </div>
                     {channel.externalUrl && (
                       <button

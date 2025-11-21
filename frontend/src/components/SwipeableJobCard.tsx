@@ -210,6 +210,11 @@ export const SwipeableJobCard: React.FC<SwipeableJobCardProps> = ({
               <div className="job-card__info">
                 <h4 className="job-card__title">
                   {job.videoTitle || job.prompt.substring(0, 60) + (job.prompt.length > 60 ? '...' : '')}
+                  {job.isAuto && (
+                    <span className="job-card__auto-badge" title="Автоматическая генерация">
+                      AUTO
+                    </span>
+                  )}
                 </h4>
                 {job.videoTitle && (
                   <p className="job-card__prompt">

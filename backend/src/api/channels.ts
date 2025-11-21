@@ -47,6 +47,7 @@ router.post("/", async (req: Request, res: Response) => {
       videoPromptTemplate,
       gdriveFolderId,
       externalUrl,
+      automation,
     } = req.body;
 
     // Валидация обязательных полей
@@ -84,6 +85,7 @@ router.post("/", async (req: Request, res: Response) => {
       videoPromptTemplate,
       gdriveFolderId: gdriveFolderId || null,
       externalUrl: validatedExternalUrl,
+      automation: automation || undefined,
     });
 
     res.json(channel);
@@ -106,6 +108,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       videoPromptTemplate,
       gdriveFolderId,
       externalUrl,
+      automation,
     } = req.body;
 
     // Валидация обязательных полей
@@ -136,6 +139,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       videoPromptTemplate,
       gdriveFolderId: gdriveFolderId || null,
       externalUrl: validatedExternalUrl,
+      automation: automation || undefined,
     });
 
     if (!updated) {

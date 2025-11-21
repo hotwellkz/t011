@@ -28,6 +28,7 @@ export interface VideoJob {
   driveFileId?: string
   webViewLink?: string
   webContentLink?: string
+  isAuto?: boolean
 }
 
 interface UseVideoJobsOptions {

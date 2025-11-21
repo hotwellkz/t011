@@ -40,6 +40,7 @@ export interface VideoJob {
   telegramVideoMessageId?: number; // ID сообщения с видео от бота (для предотвращения дубликатов)
   matchingMethod?: MatchingMethod; // Каким способом найдено видео
   debugLogs?: VideoJobDebugLogs; // Отладочная информация по воркеру
+  isAuto?: boolean; // Автоматическая генерация
   createdAt: number;
   updatedAt: number; // Время последнего обновления
 }

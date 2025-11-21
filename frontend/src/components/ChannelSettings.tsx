@@ -4,6 +4,17 @@ import { apiFetch, apiFetchJson, ApiError } from '../lib/apiClient'
 
 type Language = 'ru' | 'kk' | 'en'
 
+interface ChannelAutomation {
+  enabled: boolean
+  frequencyPerDay: number
+  times: string[]
+  daysOfWeek: string[]
+  autoApproveAndUpload: boolean
+  useOnlyFreshIdeas: boolean
+  maxActiveTasks: number
+  lastRunAt?: number | null
+}
+
 interface Channel {
   id: string
   name: string
@@ -14,6 +25,7 @@ interface Channel {
   videoPromptTemplate: string
   gdriveFolderId?: string | null
   externalUrl?: string | undefined
+  automation?: ChannelAutomation
 }
 
 const ChannelSettings: React.FC = () => {
@@ -31,6 +43,15 @@ const ChannelSettings: React.FC = () => {
     videoPromptTemplate: '',
     gdriveFolderId: '',
     externalUrl: '',
+    automation: {
+      enabled: false,
+      frequencyPerDay: 0,
+      times: [''],
+      daysOfWeek: [] as string[],
+      autoApproveAndUpload: false,
+      useOnlyFreshIdeas: false,
+      maxActiveTasks: 2,
+    } as ChannelAutomation,
   })
 
   useEffect(() => {
@@ -68,6 +89,15 @@ const ChannelSettings: React.FC = () => {
       videoPromptTemplate: '',
       gdriveFolderId: '',
       externalUrl: '',
+      automation: {
+        enabled: false,
+        frequencyPerDay: 0,
+        times: [''],
+        daysOfWeek: [],
+        autoApproveAndUpload: false,
+        useOnlyFreshIdeas: false,
+        maxActiveTasks: 2,
+      },
     })
     setEditingId(null)
   }
@@ -82,6 +112,15 @@ const ChannelSettings: React.FC = () => {
       videoPromptTemplate: channel.videoPromptTemplate,
       gdriveFolderId: channel.gdriveFolderId || '',
       externalUrl: channel.externalUrl || '',
+      automation: channel.automation || {
+        enabled: false,
+        frequencyPerDay: 0,
+        times: [''],
+        daysOfWeek: [],
+        autoApproveAndUpload: false,
+        useOnlyFreshIdeas: false,
+        maxActiveTasks: 2,
+      },
     })
     setEditingId(channel.id)
     setError('')
@@ -266,6 +305,158 @@ const ChannelSettings: React.FC = () => {
             <small style={{ color: '#718096', marginTop: '0.5rem', display: 'block' }}>
               Ссылка на YouTube-канал. Можно оставить пустым.
             </small>
+          </div>
+
+          {/* Блок автоматизации */}
+          <div style={{ marginTop: '2rem', padding: '1.5rem', border: '2px solid #e2e8f0', borderRadius: '10px', background: '#f7fafc' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Автоматизация роликов</h3>
+            
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.automation.enabled}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      automation: { ...formData.automation, enabled: e.target.checked }
+                    })
+                  }}
+                />
+                <span>Автоматизация включена</span>
+              </label>
+            </div>
+
+            {formData.automation.enabled && (
+              <>
+                <div className="input-group">
+                  <label>Частота</label>
+                  <select
+                    value={formData.automation.frequencyPerDay}
+                    onChange={(e) => {
+                      const freq = parseInt(e.target.value)
+                      const times = freq > 0 ? Array(freq).fill('').map((_, i) => i === 0 ? '10:00' : '') : ['']
+                      setFormData({
+                        ...formData,
+                        automation: { ...formData.automation, frequencyPerDay: freq, times }
+                      })
+                    }}
+                  >
+                    <option value={0}>Нет</option>
+                    <option value={1}>1 ролик в день</option>
+                    <option value={2}>2 ролика в день</option>
+                    <option value={3}>3 ролика в день</option>
+                  </select>
+                </div>
+
+                {formData.automation.frequencyPerDay > 0 && (
+                  <div className="input-group">
+                    <label>Время генерации (HH:mm)</label>
+                    {Array.from({ length: formData.automation.frequencyPerDay }).map((_, index) => (
+                      <input
+                        key={index}
+                        type="time"
+                        value={formData.automation.times[index] || ''}
+                        onChange={(e) => {
+                          const newTimes = [...formData.automation.times]
+                          newTimes[index] = e.target.value
+                          setFormData({
+                            ...formData,
+                            automation: { ...formData.automation, times: newTimes }
+                          })
+                        }}
+                        style={{ marginBottom: '0.5rem' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <div className="input-group">
+                  <label>Дни недели</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => {
+                      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                      const dayNumber = String(index + 1)
+                      const isChecked = formData.automation.daysOfWeek.includes(dayNames[index]) || 
+                                       formData.automation.daysOfWeek.includes(dayNumber)
+                      return (
+                        <label key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const newDays = [...formData.automation.daysOfWeek]
+                              if (e.target.checked) {
+                                if (!newDays.includes(dayNames[index])) newDays.push(dayNames[index])
+                                if (!newDays.includes(dayNumber)) newDays.push(dayNumber)
+                              } else {
+                                const idx1 = newDays.indexOf(dayNames[index])
+                                const idx2 = newDays.indexOf(dayNumber)
+                                if (idx1 >= 0) newDays.splice(idx1, 1)
+                                if (idx2 >= 0) newDays.splice(idx2, 1)
+                              }
+                              setFormData({
+                                ...formData,
+                                automation: { ...formData.automation, daysOfWeek: newDays }
+                              })
+                            }}
+                          />
+                          <span>{day}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.automation.autoApproveAndUpload}
+                      onChange={(e) => {
+                        setFormData({
+                          ...formData,
+                          automation: { ...formData.automation, autoApproveAndUpload: e.target.checked }
+                        })
+                      }}
+                    />
+                    <span>Автоматически одобрять и отправлять в Google Drive / YouTube</span>
+                  </label>
+                </div>
+
+                <div className="input-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.automation.useOnlyFreshIdeas}
+                      onChange={(e) => {
+                        setFormData({
+                          ...formData,
+                          automation: { ...formData.automation, useOnlyFreshIdeas: e.target.checked }
+                        })
+                      }}
+                    />
+                    <span>Использовать только новые идеи (не повторяться)</span>
+                  </label>
+                </div>
+
+                <div className="input-group">
+                  <label>Максимум активных генераций на канал</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.automation.maxActiveTasks}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        automation: { ...formData.automation, maxActiveTasks: parseInt(e.target.value) || 2 }
+                      })
+                    }}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '1rem' }}>
