@@ -46,6 +46,7 @@ router.post("/", async (req: Request, res: Response) => {
       ideaPromptTemplate,
       videoPromptTemplate,
       gdriveFolderId,
+      externalUrl,
     } = req.body;
 
     // Валидация обязательных полей
@@ -61,6 +62,18 @@ router.post("/", async (req: Request, res: Response) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
+    // Валидация externalUrl, если указан
+    let validatedExternalUrl: string | undefined = undefined;
+    if (externalUrl && externalUrl.trim()) {
+      const url = externalUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return res.status(400).json({
+          error: "externalUrl должен начинаться с http:// или https://",
+        });
+      }
+      validatedExternalUrl = url;
+    }
+
     const channel = await createChannel({
       id,
       name,
@@ -70,6 +83,7 @@ router.post("/", async (req: Request, res: Response) => {
       ideaPromptTemplate,
       videoPromptTemplate,
       gdriveFolderId: gdriveFolderId || null,
+      externalUrl: validatedExternalUrl,
     });
 
     res.json(channel);
@@ -91,6 +105,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       ideaPromptTemplate,
       videoPromptTemplate,
       gdriveFolderId,
+      externalUrl,
     } = req.body;
 
     // Валидация обязательных полей
@@ -98,6 +113,18 @@ router.put("/:id", async (req: Request, res: Response) => {
       return res.status(400).json({
         error: "Требуются поля: name, ideaPromptTemplate, videoPromptTemplate",
       });
+    }
+
+    // Валидация externalUrl, если указан
+    let validatedExternalUrl: string | undefined = undefined;
+    if (externalUrl && externalUrl.trim()) {
+      const url = externalUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return res.status(400).json({
+          error: "externalUrl должен начинаться с http:// или https://",
+        });
+      }
+      validatedExternalUrl = url;
     }
 
     const updated = await updateChannel(id, {
@@ -108,6 +135,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       ideaPromptTemplate,
       videoPromptTemplate,
       gdriveFolderId: gdriveFolderId || null,
+      externalUrl: validatedExternalUrl,
     });
 
     if (!updated) {

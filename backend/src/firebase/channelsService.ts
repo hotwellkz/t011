@@ -23,6 +23,7 @@ export async function getAllChannels(): Promise<Channel[]> {
         ideaPromptTemplate: data.ideaPromptTemplate || "",
         videoPromptTemplate: data.videoPromptTemplate || "",
         gdriveFolderId: data.gdriveFolderId || null,
+        externalUrl: data.externalUrl || undefined,
       } as Channel);
     });
 
@@ -80,6 +81,7 @@ export async function createChannel(channel: Channel): Promise<Channel> {
       ideaPromptTemplate: channel.ideaPromptTemplate,
       videoPromptTemplate: channel.videoPromptTemplate,
       gdriveFolderId: channel.gdriveFolderId || null,
+      externalUrl: channel.externalUrl || null,
     });
 
     console.log(`[Firebase] ✅ Channel created: ${channel.id}`);

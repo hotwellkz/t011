@@ -18,6 +18,7 @@ interface Channel {
   ideaPromptTemplate: string
   videoPromptTemplate: string
   gdriveFolderId?: string | null
+  externalUrl?: string | undefined
 }
 
 interface Idea {
@@ -248,23 +249,6 @@ const VideoGeneration: React.FC = () => {
     }
   }
 
-  // Функция для копирования названия ролика в буфер обмена
-  const handleCopyTitle = async () => {
-    const titleToCopy = videoTitle?.trim() || ''
-    
-    if (!titleToCopy) {
-      toast.info('Название пока пустое')
-      return
-    }
-
-    const success = await copyToClipboard(titleToCopy)
-    if (success) {
-      toast.success('Название ролика скопировано')
-    } else {
-      toast.error('Не удалось скопировать. Скопируйте вручную.')
-    }
-  }
-
   // Функция для копирования промпта в буфер обмена
   const handleCopyPrompt = async () => {
     const promptToCopy = veoPrompt?.trim() || ''
@@ -292,9 +276,25 @@ const VideoGeneration: React.FC = () => {
     }
   }
 
-  // Функция для перехода на главную
+  // Функция для перехода на главную с полным сбросом состояния
   const handleGoHome = () => {
-    navigate('/')
+    // Сбрасываем все состояние
+    setStep(1)
+    setSelectedChannel(null)
+    setSelectedIdea(null)
+    setTheme('')
+    setIdeas([])
+    setVeoPrompt('')
+    setVideoTitle('')
+    setError('')
+    setSuccess('')
+    // Очищаем localStorage
+    try {
+      localStorage.removeItem('veoPrompt')
+      localStorage.removeItem('videoTitle')
+    } catch {}
+    // Переходим на главную
+    navigate('/', { replace: true })
   }
   
   // Храним предыдущее состояние задач для отслеживания изменений статусов
@@ -1106,6 +1106,22 @@ const VideoGeneration: React.FC = () => {
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}
 
+      {/* Прогресс-индикатор шагов */}
+      <div className="steps-progress">
+        <div className={`steps-progress__step ${step === 1 ? 'active' : ''}`}>
+          <div className="steps-progress__number">1</div>
+          <span className="steps-progress__label">Выбор канала</span>
+        </div>
+        <div className={`steps-progress__step ${step === 2 ? 'active' : ''}`}>
+          <div className="steps-progress__number">2</div>
+          <span className="steps-progress__label">Генерация идей</span>
+        </div>
+        <div className={`steps-progress__step ${step === 3 ? 'active' : ''}`}>
+          <div className="steps-progress__number">3</div>
+          <span className="steps-progress__label">Промпт + генерация</span>
+        </div>
+      </div>
+
       {/* Шаг 1: Выбор канала */}
       {step === 1 && (
         <div>
@@ -1145,18 +1161,33 @@ const VideoGeneration: React.FC = () => {
               </div>
             )}
             <div className="channel-grid">
-              {channels.map((channel) => (
+              {channels.map((channel, index) => (
                 <div
                   key={channel.id}
                   className="channel-card"
                   onClick={() => handleChannelSelect(channel.id)}
                 >
-                  <h3 className="channel-card__title">{channel.name}</h3>
-                  {channel.description && (
-                    <p className="channel-card__description">
-                      {channel.description}
-                    </p>
-                  )}
+                  <div className="channel-card__header">
+                    <div className="channel-card__number">
+                      {String(index + 1).padStart(2, '0')}
+                    </div>
+                    <h3 className="channel-card__title">{channel.name}</h3>
+                    {channel.externalUrl && (
+                      <button
+                        className="channel-card__youtube-button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (channel.externalUrl) {
+                            window.open(channel.externalUrl, '_blank', 'noopener,noreferrer')
+                          }
+                        }}
+                        title="Открыть канал на YouTube"
+                        aria-label="Открыть канал на YouTube"
+                      >
+                        🔗
+                      </button>
+                    )}
+                  </div>
                   <div className="channel-card__meta">
                     {channel.language.toUpperCase()} • {channel.durationSeconds}с
                   </div>
@@ -1717,7 +1748,7 @@ const VideoGeneration: React.FC = () => {
 
           {/* Закреплённая панель действий для мобильных */}
           <div className="mobile-actions-panel">
-            {/* Первая строка - 4 компактные кнопки */}
+            {/* Одна строка - 3 кнопки */}
             <div className="mobile-actions-panel__row mobile-actions-panel__row--icons">
               <button
                 className="mobile-actions-panel__icon-button"
@@ -1729,37 +1760,19 @@ const VideoGeneration: React.FC = () => {
               </button>
               <button
                 className="mobile-actions-panel__icon-button"
+                onClick={handleCopyPrompt}
+                title="Скопировать промпт"
+              >
+                <span className="mobile-actions-panel__icon">📋</span>
+                <span className="mobile-actions-panel__label">Скопировать промпт</span>
+              </button>
+              <button
+                className="mobile-actions-panel__icon-button"
                 onClick={handleGoHome}
                 title="Главное"
               >
                 <span className="mobile-actions-panel__icon">🏠</span>
                 <span className="mobile-actions-panel__label">Главное</span>
-              </button>
-              <button
-                className="mobile-actions-panel__icon-button"
-                onClick={handleCopyPrompt}
-                title="Скопировать промпт"
-              >
-                <span className="mobile-actions-panel__icon">📋</span>
-                <span className="mobile-actions-panel__label">Промпт</span>
-              </button>
-              <button
-                className="mobile-actions-panel__icon-button"
-                onClick={handleCopyTitle}
-                title="Скопировать название"
-              >
-                <span className="mobile-actions-panel__icon">📋</span>
-                <span className="mobile-actions-panel__label">Название</span>
-              </button>
-            </div>
-            {/* Вторая строка - основная кнопка генерации */}
-            <div className="mobile-actions-panel__row mobile-actions-panel__row--main">
-              <button
-                className="button mobile-actions-panel__generate"
-                onClick={handleGenerateVideo}
-                disabled={loading || !veoPrompt.trim() || activeJobsCount >= maxActiveJobs}
-              >
-                {loading ? '⏳ Создание задачи...' : '🎬 Сгенерировать видео'}
               </button>
             </div>
           </div>

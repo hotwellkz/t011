@@ -13,6 +13,7 @@ interface Channel {
   ideaPromptTemplate: string
   videoPromptTemplate: string
   gdriveFolderId?: string | null
+  externalUrl?: string | undefined
 }
 
 const ChannelSettings: React.FC = () => {
@@ -29,6 +30,7 @@ const ChannelSettings: React.FC = () => {
     ideaPromptTemplate: '',
     videoPromptTemplate: '',
     gdriveFolderId: '',
+    externalUrl: '',
   })
 
   useEffect(() => {
@@ -65,6 +67,7 @@ const ChannelSettings: React.FC = () => {
       ideaPromptTemplate: '',
       videoPromptTemplate: '',
       gdriveFolderId: '',
+      externalUrl: '',
     })
     setEditingId(null)
   }
@@ -78,6 +81,7 @@ const ChannelSettings: React.FC = () => {
       ideaPromptTemplate: channel.ideaPromptTemplate,
       videoPromptTemplate: channel.videoPromptTemplate,
       gdriveFolderId: channel.gdriveFolderId || '',
+      externalUrl: channel.externalUrl || '',
     })
     setEditingId(channel.id)
     setError('')
@@ -239,6 +243,28 @@ const ChannelSettings: React.FC = () => {
             />
             <small style={{ color: '#718096', marginTop: '0.5rem', display: 'block' }}>
               Видео для этого канала будут сохраняться в эту папку. Если пусто — используется папка по умолчанию из настроек сервера.
+            </small>
+          </div>
+
+          <div className="input-group">
+            <label>Ссылка на канал (опционально)</label>
+            <input
+              type="text"
+              value={formData.externalUrl}
+              onChange={(e) => {
+                const value = e.target.value
+                // Валидация на клиенте (опционально)
+                if (value && value.trim() && !value.startsWith('http://') && !value.startsWith('https://')) {
+                  setError('Ссылка должна начинаться с http:// или https://')
+                } else {
+                  setError('')
+                }
+                setFormData({ ...formData, externalUrl: value })
+              }}
+              placeholder="https://www.youtube.com/@example"
+            />
+            <small style={{ color: '#718096', marginTop: '0.5rem', display: 'block' }}>
+              Ссылка на YouTube-канал. Можно оставить пустым.
             </small>
           </div>
 
