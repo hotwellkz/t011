@@ -110,7 +110,28 @@ export async function updateChannel(id: string, updates: Partial<Channel>): Prom
     // Удаляем id из updates, если он там есть (id не обновляется)
     const { id: _, ...updateData } = updates as any;
     
-    await channelRef.update(updateData);
+    // Удаляем все undefined значения, так как Firestore не принимает undefined
+    const cleanedData: any = {};
+    for (const [key, value] of Object.entries(updateData)) {
+      if (value !== undefined) {
+        // Если это пустая строка для externalUrl, преобразуем в null
+        if (key === 'externalUrl' && value === '') {
+          cleanedData[key] = null;
+        } else {
+          cleanedData[key] = value;
+        }
+      }
+    }
+    
+    // Если нет данных для обновления, возвращаем текущий документ
+    if (Object.keys(cleanedData).length === 0) {
+      return {
+        id: doc.id,
+        ...doc.data(),
+      } as Channel;
+    }
+    
+    await channelRef.update(cleanedData);
 
     const updatedDoc = await channelRef.get();
     return {

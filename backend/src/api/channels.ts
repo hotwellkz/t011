@@ -75,6 +75,15 @@ router.post("/", async (req: Request, res: Response) => {
       validatedExternalUrl = url;
     }
 
+    // Очищаем automation.times от пустых строк, если automation передано
+    let cleanedAutomation = automation;
+    if (automation && automation.times) {
+      cleanedAutomation = {
+        ...automation,
+        times: automation.times.filter((time: string) => time && time.trim()),
+      };
+    }
+
     const channel = await createChannel({
       id,
       name,
@@ -83,15 +92,29 @@ router.post("/", async (req: Request, res: Response) => {
       durationSeconds: durationSeconds || 8,
       ideaPromptTemplate,
       videoPromptTemplate,
-      gdriveFolderId: gdriveFolderId || null,
+      gdriveFolderId: gdriveFolderId && gdriveFolderId.trim() ? gdriveFolderId.trim() : null,
       externalUrl: validatedExternalUrl,
-      automation: automation || undefined,
+      automation: cleanedAutomation || undefined,
     });
 
     res.json(channel);
-  } catch (error) {
-    console.error("Ошибка при создании канала:", error);
-    res.status(500).json({ error: "Ошибка при создании канала" });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Ошибка при создании канала:", errorMessage);
+    
+    // Если это ошибка Firebase, возвращаем более детальное сообщение
+    if (errorMessage.includes("Firebase не инициализирован") || errorMessage.includes("FIREBASE_")) {
+      console.error("[API] Firebase credentials отсутствуют или неверны");
+      return res.status(500).json({ 
+        error: "Firebase не настроен. Проверьте переменные окружения FIREBASE_* в Cloud Run.",
+        details: errorMessage 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Ошибка при создании канала",
+      details: errorMessage 
+    });
   }
 });
 
@@ -130,26 +153,58 @@ router.put("/:id", async (req: Request, res: Response) => {
       validatedExternalUrl = url;
     }
 
-    const updated = await updateChannel(id, {
+    // Подготовка данных для обновления
+    const updateData: Partial<Channel> = {
       name,
       description: description || "",
       language: language || "ru",
       durationSeconds: durationSeconds || 8,
       ideaPromptTemplate,
       videoPromptTemplate,
-      gdriveFolderId: gdriveFolderId || null,
-      externalUrl: validatedExternalUrl,
-      automation: automation || undefined,
-    });
+      gdriveFolderId: gdriveFolderId && gdriveFolderId.trim() ? gdriveFolderId.trim() : null,
+    };
+
+    // Добавляем externalUrl только если он валиден, иначе null
+    if (validatedExternalUrl) {
+      updateData.externalUrl = validatedExternalUrl;
+    } else {
+      updateData.externalUrl = null;
+    }
+
+    // Добавляем automation только если оно передано
+    if (automation !== undefined) {
+      // Очищаем массив times от пустых строк
+      const cleanedAutomation = {
+        ...automation,
+        times: automation.times ? automation.times.filter((time: string) => time && time.trim()) : [],
+      };
+      updateData.automation = cleanedAutomation;
+    }
+
+    const updated = await updateChannel(id, updateData);
 
     if (!updated) {
       return res.status(404).json({ error: "Канал не найден" });
     }
 
     res.json(updated);
-  } catch (error) {
-    console.error("Ошибка при обновлении канала:", error);
-    res.status(500).json({ error: "Ошибка при обновлении канала" });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Ошибка при обновлении канала:", errorMessage);
+    
+    // Если это ошибка Firebase, возвращаем более детальное сообщение
+    if (errorMessage.includes("Firebase не инициализирован") || errorMessage.includes("FIREBASE_")) {
+      console.error("[API] Firebase credentials отсутствуют или неверны");
+      return res.status(500).json({ 
+        error: "Firebase не настроен. Проверьте переменные окружения FIREBASE_* в Cloud Run.",
+        details: errorMessage 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Ошибка при обновлении канала",
+      details: errorMessage 
+    });
   }
 });
 
