@@ -1,13 +1,20 @@
 /**
  * Утилиты для работы с расписанием автоматизации
+ * 
+ * ВАЖНО: Расписание задаётся в локальном времени Asia/Almaty (UTC+6).
+ * Внутри всё хранится в UTC (ISO timestamp).
+ * nextRunAt на фронт всегда отдаётся в UTC и потом конвертируется в Asia/Almaty для отображения.
  */
 
 const DEFAULT_TIMEZONE = "Asia/Almaty"; // UTC+6
 
 /**
- * Получает текущее время в указанном часовом поясе
+ * Получает компоненты текущего времени в указанном часовом поясе
+ * Возвращает объект с компонентами времени (год, месяц, день, час, минута)
  */
-export function getCurrentTimeInTimezone(timezone: string = DEFAULT_TIMEZONE): Date {
+export function getCurrentTimeComponentsInTimezone(
+  timezone: string = DEFAULT_TIMEZONE
+): { year: number; month: number; day: number; hour: number; minute: number; dayOfWeek: number } {
   const now = new Date();
   // Используем Intl API для работы с timezone
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -17,7 +24,7 @@ export function getCurrentTimeInTimezone(timezone: string = DEFAULT_TIMEZONE): D
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
+    weekday: "short",
     hour12: false,
   });
 
@@ -27,9 +34,88 @@ export function getCurrentTimeInTimezone(timezone: string = DEFAULT_TIMEZONE): D
   const day = parseInt(parts.find((p) => p.type === "day")!.value);
   const hour = parseInt(parts.find((p) => p.type === "hour")!.value);
   const minute = parseInt(parts.find((p) => p.type === "minute")!.value);
-  const second = parseInt(parts.find((p) => p.type === "second")!.value);
+  const weekday = parts.find((p) => p.type === "weekday")!.value;
+  
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayOfWeek = dayNames.indexOf(weekday);
 
-  return new Date(year, month, day, hour, minute, second);
+  return { year, month, day, hour, minute, dayOfWeek };
+}
+
+/**
+ * Преобразует локальное время в указанном timezone в UTC timestamp
+ * 
+ * Правильный алгоритм через итеративное уточнение:
+ * 1. Начинаем с приблизительной оценки (предполагая фиксированный offset)
+ * 2. Итеративно уточняем, пока не получим точное совпадение
+ * 
+ * @param year - год в локальном времени timezone
+ * @param month - месяц (0-11) в локальном времени timezone
+ * @param day - день в локальном времени timezone
+ * @param hour - час (0-23) в локальном времени timezone
+ * @param minute - минута (0-59) в локальном времени timezone
+ * @param timezone - часовой пояс (например, "Asia/Almaty")
+ * @returns UTC timestamp (milliseconds)
+ */
+export function localTimeToUTCTimestamp(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timezone: string = DEFAULT_TIMEZONE
+): number {
+  // Начальная оценка: предполагаем UTC+6 для Asia/Almaty
+  // Но это может быть неточно из-за DST, поэтому используем итеративное уточнение
+  let candidate = Date.UTC(year, month, day, hour - 6, minute, 0);
+  
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  
+  // Итеративно уточняем timestamp (максимум 10 итераций)
+  for (let i = 0; i < 10; i++) {
+    const date = new Date(candidate);
+    const parts = formatter.formatToParts(date);
+    
+    const tzYear = parseInt(parts.find((p) => p.type === "year")!.value);
+    const tzMonth = parseInt(parts.find((p) => p.type === "month")!.value) - 1;
+    const tzDay = parseInt(parts.find((p) => p.type === "day")!.value);
+    const tzHour = parseInt(parts.find((p) => p.type === "hour")!.value);
+    const tzMinute = parseInt(parts.find((p) => p.type === "minute")!.value);
+    
+    // Если совпадает - возвращаем
+    if (
+      tzYear === year &&
+      tzMonth === month &&
+      tzDay === day &&
+      tzHour === hour &&
+      tzMinute === minute
+    ) {
+      return candidate;
+    }
+    
+    // Вычисляем разницу в минутах
+    const diffMinutes =
+      (tzYear - year) * 365 * 24 * 60 +
+      (tzMonth - month) * 30 * 24 * 60 +
+      (tzDay - day) * 24 * 60 +
+      (tzHour - hour) * 60 +
+      (tzMinute - minute);
+    
+    // Корректируем candidate
+    candidate = candidate - diffMinutes * 60 * 1000;
+  }
+  
+  // Если после итераций не совпало точно, возвращаем последнее значение
+  // (должно быть достаточно близко)
+  return candidate;
 }
 
 
@@ -56,9 +142,12 @@ export function getDayOfWeekInTimezone(
 
 /**
  * Вычисляет следующее время запуска автоматизации
+ * 
+ * ВАЖНО: times должны быть в формате "HH:mm" и интерпретируются как локальное время в указанном timezone.
+ * Результат возвращается как UTC timestamp.
  */
 export function calculateNextRunAt(
-  times: string[], // ["10:00", "15:00"]
+  times: string[], // ["10:00", "15:00"] - локальное время в timezone
   daysOfWeek: string[], // ["Mon", "Tue", "1", "2"]
   timezone: string = DEFAULT_TIMEZONE,
   lastRunAt?: number | null
@@ -67,7 +156,8 @@ export function calculateNextRunAt(
     return null;
   }
 
-  const now = getCurrentTimeInTimezone(timezone);
+  // Получаем текущее время в указанном timezone
+  const nowComponents = getCurrentTimeComponentsInTimezone(timezone);
   const nowUTC = new Date();
   
   // Парсим дни недели
@@ -86,9 +176,10 @@ export function calculateNextRunAt(
     return null;
   }
 
-  // Парсим времена
+  // Парсим времена (HH:mm в локальном времени timezone)
   const validTimes = times
     .map((t) => {
+      if (!t || t.trim() === "") return null;
       const [h, m] = t.split(":").map(Number);
       if (isNaN(h) || isNaN(m)) return null;
       return { hour: h, minute: m };
@@ -100,13 +191,14 @@ export function calculateNextRunAt(
   }
 
   // Ищем ближайшее время в ближайшие 7 дней
-  let candidate: Date | null = null;
+  let candidateTimestamp: number | null = null;
   
   for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-    const checkDate = new Date(now);
-    checkDate.setDate(checkDate.getDate() + dayOffset);
+    // Вычисляем дату в указанном timezone
+    const checkDate = new Date(nowComponents.year, nowComponents.month, nowComponents.day + dayOffset);
     
-    const [dayName, dayNumber] = getDayOfWeekInTimezone(checkDate, timezone);
+    // Получаем день недели для этой даты в указанном timezone
+    const [dayName] = getDayOfWeekInTimezone(checkDate, timezone);
     const dayIndex = dayNames.indexOf(dayName);
     
     if (!validDays.includes(dayIndex)) {
@@ -114,65 +206,80 @@ export function calculateNextRunAt(
     }
 
     for (const time of validTimes) {
-      const candidateDate = new Date(checkDate);
-      candidateDate.setHours(time.hour, time.minute, 0, 0);
+      // Создаем локальное время в указанном timezone
+      const localYear = nowComponents.year;
+      const localMonth = nowComponents.month;
+      const localDay = nowComponents.day + dayOffset;
       
       // Если это сегодня и время уже прошло, пропускаем
-      if (dayOffset === 0 && candidateDate <= now) {
-        continue;
+      if (dayOffset === 0) {
+        const currentMinutes = nowComponents.hour * 60 + nowComponents.minute;
+        const scheduledMinutes = time.hour * 60 + time.minute;
+        if (scheduledMinutes <= currentMinutes) {
+          continue;
+        }
       }
+      
+      // Преобразуем локальное время в UTC timestamp
+      // Важно: time.hour и time.minute - это локальное время в указанном timezone
+      const candidateUTC = localTimeToUTCTimestamp(
+        localYear,
+        localMonth,
+        localDay,
+        time.hour,
+        time.minute,
+        timezone
+      );
       
       // Проверяем, не был ли это последний запуск
       if (lastRunAt) {
-        const lastRun = new Date(lastRunAt);
-        const lastRunInTz = getCurrentTimeInTimezone(timezone);
-        lastRunInTz.setTime(lastRun.getTime());
-        
+        const lastRunComponents = getTimeComponentsFromUTC(lastRunAt, timezone);
         if (
-          candidateDate.getDate() === lastRunInTz.getDate() &&
-          candidateDate.getMonth() === lastRunInTz.getMonth() &&
-          candidateDate.getFullYear() === lastRunInTz.getFullYear() &&
-          candidateDate.getHours() === lastRunInTz.getHours() &&
-          candidateDate.getMinutes() === lastRunInTz.getMinutes()
+          localYear === lastRunComponents.year &&
+          localMonth === lastRunComponents.month &&
+          localDay === lastRunComponents.day &&
+          time.hour === lastRunComponents.hour &&
+          time.minute === lastRunComponents.minute
         ) {
           continue;
         }
       }
       
-      if (!candidate || candidateDate < candidate) {
-        candidate = candidateDate;
+      if (!candidateTimestamp || candidateUTC < candidateTimestamp) {
+        candidateTimestamp = candidateUTC;
       }
     }
   }
 
-  if (!candidate) {
-    return null;
-  }
+  return candidateTimestamp;
+}
 
-  // Преобразуем локальное время в указанном timezone в UTC timestamp
-  // Используем простой способ: создаем строку даты и парсим с учетом timezone
-  const year = candidate.getFullYear();
-  const month = candidate.getMonth();
-  const day = candidate.getDate();
-  const hour = candidate.getHours();
-  const minute = candidate.getMinutes();
-  
-  // Создаем строку в формате ISO
-  const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
-  
-  // Используем временную дату для получения offset
-  // Создаем дату как будто это локальное время в указанном timezone
-  const tempDate = new Date(dateString);
-  
-  // Получаем offset для указанного timezone
-  const utcString = tempDate.toLocaleString("en-US", { timeZone: "UTC" });
-  const tzString = tempDate.toLocaleString("en-US", { timeZone: timezone });
-  const utcDate = new Date(utcString);
-  const tzDate = new Date(tzString);
-  const offset = utcDate.getTime() - tzDate.getTime();
-  
-  // Корректируем timestamp с учетом offset
-  return tempDate.getTime() - offset;
+/**
+ * Получает компоненты времени из UTC timestamp в указанном timezone
+ */
+function getTimeComponentsFromUTC(
+  utcTimestamp: number,
+  timezone: string = DEFAULT_TIMEZONE
+): { year: number; month: number; day: number; hour: number; minute: number } {
+  const date = new Date(utcTimestamp);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  return {
+    year: parseInt(parts.find((p) => p.type === "year")!.value),
+    month: parseInt(parts.find((p) => p.type === "month")!.value) - 1,
+    day: parseInt(parts.find((p) => p.type === "day")!.value),
+    hour: parseInt(parts.find((p) => p.type === "hour")!.value),
+    minute: parseInt(parts.find((p) => p.type === "minute")!.value),
+  };
 }
 
 

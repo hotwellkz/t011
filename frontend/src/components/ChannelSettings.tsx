@@ -155,11 +155,22 @@ const ChannelSettings: React.FC = () => {
       const url = editingId ? `/api/channels/${editingId}` : '/api/channels'
       const method = editingId ? 'PUT' : 'POST'
 
-      await apiFetchJson(url, {
+      const updatedChannel = await apiFetchJson<Channel>(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
+
+      // Обновляем formData с актуальными данными из ответа (особенно nextRunAt)
+      if (editingId && updatedChannel.automation) {
+        setFormData({
+          ...formData,
+          automation: {
+            ...formData.automation,
+            ...updatedChannel.automation,
+          },
+        })
+      }
 
       resetForm()
       setSuccess(editingId ? 'Канал успешно обновлён!' : 'Канал успешно создан!')
@@ -441,6 +452,9 @@ const ChannelSettings: React.FC = () => {
                   <option value={1}>1 ролик в день</option>
                   <option value={2}>2 ролика в день</option>
                   <option value={3}>3 ролика в день</option>
+                  <option value={4}>4 ролика в день</option>
+                  <option value={5}>5 роликов в день</option>
+                  <option value={6}>6 роликов в день</option>
                 </select>
                 <small className="automation-hint">Выберите, сколько роликов создавать в день</small>
               </div>

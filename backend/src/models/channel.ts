@@ -2,7 +2,7 @@ export type Language = "ru" | "kk" | "en";
 
 export interface ChannelAutomation {
   enabled: boolean;
-  frequencyPerDay: number; // 0, 1, 2, 3
+  frequencyPerDay: number; // 0, 1, 2, 3, 4, 5, 6
   times: string[]; // ["10:00", "15:00"] в формате HH:mm
   daysOfWeek: string[]; // ["Mon", "Tue", ...] или ["1", "2", ...]
   autoApproveAndUpload: boolean;

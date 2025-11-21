@@ -78,9 +78,25 @@ router.post("/", async (req: Request, res: Response) => {
     // Очищаем automation.times от пустых строк, если automation передано
     let cleanedAutomation = automation;
     if (automation && automation.times) {
+      const cleanedTimes = automation.times.filter((time: string) => time && time.trim());
+      
+      // Валидация: максимум 6 роликов в день
+      if (automation.frequencyPerDay > 6) {
+        return res.status(400).json({
+          error: "Максимальная частота генерации — 6 роликов в день",
+        });
+      }
+      
+      // Валидация: количество времён не должно превышать частоту
+      if (cleanedTimes.length > automation.frequencyPerDay) {
+        return res.status(400).json({
+          error: `Количество времён (${cleanedTimes.length}) не должно превышать частоту генерации (${automation.frequencyPerDay})`,
+        });
+      }
+      
       cleanedAutomation = {
         ...automation,
-        times: automation.times.filter((time: string) => time && time.trim()),
+        times: cleanedTimes,
         // Устанавливаем timezone по умолчанию, если не указан
         timeZone: automation.timeZone || "Asia/Almaty",
       };
@@ -201,9 +217,25 @@ router.put("/:id", async (req: Request, res: Response) => {
     // Добавляем automation только если оно передано
     if (automation !== undefined) {
       // Очищаем массив times от пустых строк
+      const cleanedTimes = automation.times ? automation.times.filter((time: string) => time && time.trim()) : [];
+      
+      // Валидация: максимум 6 роликов в день
+      if (automation.frequencyPerDay > 6) {
+        return res.status(400).json({
+          error: "Максимальная частота генерации — 6 роликов в день",
+        });
+      }
+      
+      // Валидация: количество времён не должно превышать частоту
+      if (cleanedTimes.length > automation.frequencyPerDay) {
+        return res.status(400).json({
+          error: `Количество времён (${cleanedTimes.length}) не должно превышать частоту генерации (${automation.frequencyPerDay})`,
+        });
+      }
+      
       const cleanedAutomation = {
         ...automation,
-        times: automation.times ? automation.times.filter((time: string) => time && time.trim()) : [],
+        times: cleanedTimes,
         // Устанавливаем timezone по умолчанию, если не указан
         timeZone: automation.timeZone || "Asia/Almaty",
       };
@@ -245,6 +277,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Канал не найден" });
     }
 
+    // Возвращаем обновленный канал с актуальным nextRunAt
     res.json(updated);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);

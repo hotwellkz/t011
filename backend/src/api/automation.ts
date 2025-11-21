@@ -4,7 +4,7 @@ import { createJob, countActiveJobs } from "../models/videoJob";
 import { generateIdeas } from "../services/openaiService";
 import { generateVeoPrompt } from "../services/openaiService";
 import {
-  getCurrentTimeInTimezone,
+  getCurrentTimeComponentsInTimezone,
   getDayOfWeekInTimezone,
   DEFAULT_TIMEZONE,
   formatDateInTimezone,
@@ -36,7 +36,7 @@ function shouldRunAutomation(
   const timezone = automation.timeZone || DEFAULT_TIMEZONE;
 
   // Получаем текущее время в указанном timezone
-  const currentTime = getCurrentTimeInTimezone(timezone);
+  const currentTimeComponents = getCurrentTimeComponentsInTimezone(timezone);
   const currentTimeUTC = new Date();
 
   // Проверяем день недели в указанном timezone
@@ -52,8 +52,8 @@ function shouldRunAutomation(
   }
 
   // Проверяем время
-  const currentHour = currentTime.getHours();
-  const currentMinute = currentTime.getMinutes();
+  const currentHour = currentTimeComponents.hour;
+  const currentMinute = currentTimeComponents.minute;
 
   // Проверяем, есть ли запланированное время в интервале
   for (const scheduledTime of automation.times) {
@@ -73,16 +73,29 @@ function shouldRunAutomation(
       // Проверяем, не было ли уже запуска сегодня для этого времени
       if (automation.lastRunAt) {
         const lastRunDate = new Date(automation.lastRunAt);
-        const lastRunInTz = getCurrentTimeInTimezone(timezone);
-        lastRunInTz.setTime(lastRunDate.getTime());
+        const lastRunFormatter = new Intl.DateTimeFormat("en-US", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        const lastRunParts = lastRunFormatter.formatToParts(lastRunDate);
+        const lastRunYear = parseInt(lastRunParts.find((p) => p.type === "year")!.value);
+        const lastRunMonth = parseInt(lastRunParts.find((p) => p.type === "month")!.value) - 1;
+        const lastRunDay = parseInt(lastRunParts.find((p) => p.type === "day")!.value);
+        const lastRunHour = parseInt(lastRunParts.find((p) => p.type === "hour")!.value);
+        const lastRunMinute = parseInt(lastRunParts.find((p) => p.type === "minute")!.value);
 
         // Если последний запуск был сегодня и для этого же времени - пропускаем
         if (
-          lastRunInTz.getDate() === currentTime.getDate() &&
-          lastRunInTz.getMonth() === currentTime.getMonth() &&
-          lastRunInTz.getFullYear() === currentTime.getFullYear() &&
-          lastRunInTz.getHours() === scheduledHour &&
-          lastRunInTz.getMinutes() === scheduledMinute
+          lastRunYear === currentTimeComponents.year &&
+          lastRunMonth === currentTimeComponents.month &&
+          lastRunDay === currentTimeComponents.day &&
+          lastRunHour === scheduledHour &&
+          lastRunMinute === scheduledMinute
         ) {
           continue;
         }
@@ -122,7 +135,6 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
   const runId = `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
-    const currentTimeInTz = getCurrentTimeInTimezone(timezone);
     const timeString = formatDateInTimezone(Date.now(), timezone);
     
     console.log(
@@ -334,7 +346,6 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
 router.post("/run-scheduled", async (req: Request, res: Response) => {
   try {
     const currentTimeUTC = new Date();
-    const currentTimeInDefaultTz = getCurrentTimeInTimezone(DEFAULT_TIMEZONE);
     const timeString = formatDateInTimezone(Date.now(), DEFAULT_TIMEZONE);
     
     console.log("[Automation] Running scheduled automation check...");
