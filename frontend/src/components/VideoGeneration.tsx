@@ -1082,24 +1082,6 @@ const VideoGeneration: React.FC = () => {
     <div className="card">
       <h2>Генерация видео</h2>
 
-      {/* Индикатор шагов */}
-      <div className="step-indicator" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', justifyContent: 'center' }}>
-        <div className={`step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div className="step-number" style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: step >= 1 ? '#667eea' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
-          <span>Выбор канала</span>
-        </div>
-        <div style={{ width: '2rem', height: '2px', background: step >= 2 ? '#667eea' : '#e2e8f0', marginTop: '1rem' }}></div>
-        <div className={`step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div className="step-number" style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: step >= 2 ? '#667eea' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
-          <span>Генерация идей</span>
-        </div>
-        <div style={{ width: '2rem', height: '2px', background: step >= 3 ? '#667eea' : '#e2e8f0', marginTop: '1rem' }}></div>
-        <div className={`step ${step >= 3 ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div className="step-number" style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: step >= 3 ? '#667eea' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
-          <span>Промпт + генерация</span>
-        </div>
-      </div>
-
       {/* Toast Container */}
       <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
       
@@ -1168,10 +1150,12 @@ const VideoGeneration: React.FC = () => {
                   onClick={() => handleChannelSelect(channel.id)}
                 >
                   <div className="channel-card__header">
-                    <div className="channel-card__number">
-                      {String(index + 1).padStart(2, '0')}
+                    <div className="channel-card__header-left">
+                      <div className="channel-card__number">
+                        {String(index + 1).padStart(2, '0')}
+                      </div>
+                      <h3 className="channel-card__title">{channel.name}</h3>
                     </div>
-                    <h3 className="channel-card__title">{channel.name}</h3>
                     {channel.externalUrl && (
                       <button
                         className="channel-card__youtube-button"
@@ -1184,7 +1168,7 @@ const VideoGeneration: React.FC = () => {
                         title="Открыть канал на YouTube"
                         aria-label="Открыть канал на YouTube"
                       >
-                        🔗
+                        ↗
                       </button>
                     )}
                   </div>
