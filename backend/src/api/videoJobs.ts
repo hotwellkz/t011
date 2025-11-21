@@ -136,6 +136,26 @@ async function processVideoGeneration(jobId: string): Promise<void> {
           console.log(
             `[VideoJob] ✅ Job ${jobId} auto-approved and uploaded successfully`
           );
+          
+          // Сбрасываем флаг isRunning для канала после завершения автоматического цикла
+          try {
+            const { updateChannel } = await import("../models/channel");
+            await updateChannel(updatedJob.channelId, {
+              automation: {
+                ...channel.automation!,
+                isRunning: false,
+                runId: null,
+              },
+            });
+            console.log(
+              `[VideoJob] Reset isRunning flag for channel ${updatedJob.channelId}`
+            );
+          } catch (resetError) {
+            console.error(
+              `[VideoJob] Failed to reset isRunning flag for channel ${updatedJob.channelId}:`,
+              resetError
+            );
+          }
         }
       } catch (autoApproveError: any) {
         console.error(
@@ -144,6 +164,26 @@ async function processVideoGeneration(jobId: string): Promise<void> {
         );
         // Откатываем статус на ready, если авто-одобрение не удалось
         await updateJob(jobId, { status: "ready" });
+        
+        // Сбрасываем флаг isRunning даже при ошибке
+        try {
+          const { updateChannel, getChannelById } = await import("../models/channel");
+          const channelForReset = await getChannelById(updatedJob.channelId);
+          if (channelForReset && channelForReset.automation?.isRunning) {
+            await updateChannel(updatedJob.channelId, {
+              automation: {
+                ...channelForReset.automation,
+                isRunning: false,
+                runId: null,
+              },
+            });
+          }
+        } catch (resetError) {
+          console.error(
+            `[VideoJob] Failed to reset isRunning flag after error:`,
+            resetError
+          );
+        }
       }
     }
 
@@ -168,6 +208,32 @@ async function processVideoGeneration(jobId: string): Promise<void> {
       status: finalStatus,
       errorMessage,
     });
+    
+    // Сбрасываем флаг isRunning при ошибке для автоматических задач
+    try {
+      const job = await getJob(jobId);
+      if (job && job.isAuto && job.channelId) {
+        const { updateChannel, getChannelById } = await import("../models/channel");
+        const channel = await getChannelById(job.channelId);
+        if (channel && channel.automation?.isRunning) {
+          await updateChannel(job.channelId, {
+            automation: {
+              ...channel.automation,
+              isRunning: false,
+              runId: null,
+            },
+          });
+          console.log(
+            `[VideoJob] Reset isRunning flag for channel ${job.channelId} after error`
+          );
+        }
+      }
+    } catch (resetError) {
+      console.error(
+        `[VideoJob] Failed to reset isRunning flag after error:`,
+        resetError
+      );
+    }
   }
 }
 

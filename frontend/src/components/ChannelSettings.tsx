@@ -13,6 +13,10 @@ interface ChannelAutomation {
   useOnlyFreshIdeas: boolean
   maxActiveTasks: number
   lastRunAt?: number | null
+  timeZone?: string
+  nextRunAt?: number | null
+  isRunning?: boolean
+  runId?: string | null
 }
 
 interface Channel {
@@ -56,7 +60,16 @@ const ChannelSettings: React.FC = () => {
 
   useEffect(() => {
     fetchChannels()
-  }, [])
+    
+    // Обновляем статус автоматизации каждые 30 секунд
+    const interval = setInterval(() => {
+      if (editingId) {
+        fetchChannels()
+      }
+    }, 30000)
+    
+    return () => clearInterval(interval)
+  }, [editingId])
 
   const getErrorMessage = (err: unknown) => {
     if (err instanceof ApiError) {
@@ -97,6 +110,7 @@ const ChannelSettings: React.FC = () => {
         autoApproveAndUpload: false,
         useOnlyFreshIdeas: false,
         maxActiveTasks: 2,
+        timeZone: 'Asia/Almaty',
       },
     })
     setEditingId(null)
@@ -112,7 +126,10 @@ const ChannelSettings: React.FC = () => {
       videoPromptTemplate: channel.videoPromptTemplate,
       gdriveFolderId: channel.gdriveFolderId || '',
       externalUrl: channel.externalUrl || '',
-      automation: channel.automation || {
+      automation: channel.automation ? {
+        ...channel.automation,
+        timeZone: channel.automation.timeZone || 'Asia/Almaty',
+      } : {
         enabled: false,
         frequencyPerDay: 0,
         times: [''],
@@ -120,6 +137,7 @@ const ChannelSettings: React.FC = () => {
         autoApproveAndUpload: false,
         useOnlyFreshIdeas: false,
         maxActiveTasks: 2,
+        timeZone: 'Asia/Almaty',
       },
     })
     setEditingId(channel.id)
@@ -346,6 +364,63 @@ const ChannelSettings: React.FC = () => {
               Когда автоматизация включена — система автоматически создаёт идеи, промпты и генерирует видео по расписанию.
             </p>
 
+            {/* Статус автоматизации */}
+            {formData.automation.enabled && (
+              <div className="automation-status">
+                {formData.automation.isRunning ? (
+                  <div className="automation-status__running">
+                    <span className="automation-status__indicator automation-status__indicator--running"></span>
+                    <span className="automation-status__text">Автоматизация выполняется...</span>
+                  </div>
+                ) : (
+                  <div className="automation-status__idle">
+                    <span className="automation-status__indicator automation-status__indicator--idle"></span>
+                    <span className="automation-status__text">Автоматизация включена. Ожидаем следующего запуска.</span>
+                  </div>
+                )}
+                
+                <div className="automation-status__info">
+                  <div className="automation-status__item">
+                    <strong>Часовой пояс:</strong> {formData.automation.timeZone || 'Asia/Almaty'} (UTC+6)
+                  </div>
+                  {formData.automation.lastRunAt ? (
+                    <div className="automation-status__item">
+                      <strong>Последний запуск:</strong>{' '}
+                      {new Date(formData.automation.lastRunAt).toLocaleString('ru-RU', {
+                        timeZone: formData.automation.timeZone || 'Asia/Almaty',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  ) : (
+                    <div className="automation-status__item">
+                      <strong>Последний запуск:</strong> ещё не запускалось
+                    </div>
+                  )}
+                  {formData.automation.nextRunAt ? (
+                    <div className="automation-status__item">
+                      <strong>Следующий запуск:</strong>{' '}
+                      {new Date(formData.automation.nextRunAt).toLocaleString('ru-RU', {
+                        timeZone: formData.automation.timeZone || 'Asia/Almaty',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  ) : (
+                    <div className="automation-status__item">
+                      <strong>Следующий запуск:</strong> не запланирован
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className={`automation-block__content ${!formData.automation.enabled ? 'automation-block__content--disabled' : ''}`}>
               <div className="input-group">
                 <label className="automation-label">Частота генерации</label>
@@ -392,7 +467,11 @@ const ChannelSettings: React.FC = () => {
                       />
                     ))}
                   </div>
-                  <small className="automation-hint">Укажите время, когда должна запускаться генерация</small>
+                  <small className="automation-hint">
+                    Укажите время, когда должна запускаться генерация.
+                    <br />
+                    <strong>Время указывается по часовому поясу: Астана (Asia/Almaty, UTC+6).</strong>
+                  </small>
                 </div>
               )}
 

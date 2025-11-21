@@ -81,7 +81,34 @@ router.post("/", async (req: Request, res: Response) => {
       cleanedAutomation = {
         ...automation,
         times: automation.times.filter((time: string) => time && time.trim()),
+        // Устанавливаем timezone по умолчанию, если не указан
+        timeZone: automation.timeZone || "Asia/Almaty",
       };
+      
+      // Рассчитываем nextRunAt, если автоматизация включена
+      if (cleanedAutomation.enabled && cleanedAutomation.times.length > 0 && cleanedAutomation.daysOfWeek.length > 0) {
+        const { calculateNextRunAt } = await import("../utils/automationSchedule");
+        const nextRunAt = calculateNextRunAt(
+          cleanedAutomation.times,
+          cleanedAutomation.daysOfWeek,
+          cleanedAutomation.timeZone,
+          null
+        );
+        cleanedAutomation.nextRunAt = nextRunAt;
+        
+        if (nextRunAt) {
+          const { formatDateInTimezone } = await import("../utils/automationSchedule");
+          const nextRunString = formatDateInTimezone(nextRunAt, cleanedAutomation.timeZone);
+          console.log(
+            `[Channels] New channel ${id}: Next automation run scheduled for ${nextRunString} (${cleanedAutomation.timeZone})`
+          );
+        }
+      } else {
+        cleanedAutomation.nextRunAt = null;
+      }
+      
+      cleanedAutomation.isRunning = false;
+      cleanedAutomation.runId = null;
     }
 
     const channel = await createChannel({
@@ -177,7 +204,38 @@ router.put("/:id", async (req: Request, res: Response) => {
       const cleanedAutomation = {
         ...automation,
         times: automation.times ? automation.times.filter((time: string) => time && time.trim()) : [],
+        // Устанавливаем timezone по умолчанию, если не указан
+        timeZone: automation.timeZone || "Asia/Almaty",
       };
+      
+      // Рассчитываем nextRunAt, если автоматизация включена
+      if (cleanedAutomation.enabled && cleanedAutomation.times.length > 0 && cleanedAutomation.daysOfWeek.length > 0) {
+        const { calculateNextRunAt } = await import("../utils/automationSchedule");
+        const nextRunAt = calculateNextRunAt(
+          cleanedAutomation.times,
+          cleanedAutomation.daysOfWeek,
+          cleanedAutomation.timeZone,
+          cleanedAutomation.lastRunAt || null
+        );
+        cleanedAutomation.nextRunAt = nextRunAt;
+        
+        if (nextRunAt) {
+          const { formatDateInTimezone } = await import("../utils/automationSchedule");
+          const nextRunString = formatDateInTimezone(nextRunAt, cleanedAutomation.timeZone);
+          console.log(
+            `[Channels] Channel ${id}: Next automation run scheduled for ${nextRunString} (${cleanedAutomation.timeZone})`
+          );
+        }
+      } else {
+        cleanedAutomation.nextRunAt = null;
+      }
+      
+      // Сбрасываем isRunning при обновлении настроек (кроме случая, когда уже выполняется)
+      if (!cleanedAutomation.isRunning) {
+        cleanedAutomation.isRunning = false;
+        cleanedAutomation.runId = null;
+      }
+      
       updateData.automation = cleanedAutomation;
     }
 

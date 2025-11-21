@@ -2644,6 +2644,100 @@
   cursor: not-allowed;
 }
 
+/* Статус автоматизации */
+.automation-status {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.automation-status__running,
+.automation-status__idle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+
+.automation-status__running {
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+}
+
+.automation-status__idle {
+  background: #f0f4ff;
+  border: 1px solid #c3dafe;
+}
+
+.automation-status__indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.automation-status__indicator--running {
+  background: #f56565;
+  box-shadow: 0 0 8px rgba(245, 101, 101, 0.6);
+}
+
+.automation-status__indicator--idle {
+  background: #667eea;
+  animation: none;
+}
+
+.automation-status__text {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 0.95rem;
+}
+
+.automation-status__running .automation-status__text {
+  color: #c53030;
+}
+
+.automation-status__idle .automation-status__text {
+  color: #2c5282;
+}
+
+.automation-status__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #4a5568;
+}
+
+.automation-status__item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.automation-status__item:last-child {
+  border-bottom: none;
+}
+
+.automation-status__item strong {
+  color: #2d3748;
+  margin-right: 0.5rem;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
 /* Описание работы автоматизации */
 .automation-description {
   margin-top: 1.5rem;
@@ -2746,6 +2840,20 @@
   .automation-block {
     padding: 1rem;
     border-radius: 8px;
+  }
+
+  .automation-status {
+    padding: 0.875rem;
+  }
+
+  .automation-status__running,
+  .automation-status__idle {
+    padding: 0.625rem;
+    font-size: 0.9rem;
+  }
+
+  .automation-status__info {
+    font-size: 0.8rem;
   }
 
   .automation-block__title {

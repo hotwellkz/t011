@@ -3,39 +3,47 @@ import { getAllChannels, getChannelById, Channel } from "../models/channel";
 import { createJob, countActiveJobs } from "../models/videoJob";
 import { generateIdeas } from "../services/openaiService";
 import { generateVeoPrompt } from "../services/openaiService";
+import {
+  getCurrentTimeInTimezone,
+  getDayOfWeekInTimezone,
+  DEFAULT_TIMEZONE,
+  formatDateInTimezone,
+} from "../utils/automationSchedule";
 
 const router = Router();
 
 /**
- * Преобразует день недели в формат для проверки
- * Возвращает массив строк ["Mon", "Tue", ...] или ["1", "2", ...]
- */
-function getCurrentDayOfWeek(): string {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return days[new Date().getDay()];
-}
-
-function getCurrentDayOfWeekNumber(): string {
-  return String(new Date().getDay() + 1); // 1-7, где 1 = воскресенье
-}
-
-/**
  * Проверяет, нужно ли запускать автоматизацию для канала в текущее время
+ * Использует timezone из настроек канала или Asia/Almaty по умолчанию
  */
 function shouldRunAutomation(
   channel: Channel,
-  currentTime: Date,
-  intervalMinutes: number = 5
+  intervalMinutes: number = 10
 ): boolean {
   if (!channel.automation || !channel.automation.enabled) {
     return false;
   }
 
-  const automation = channel.automation;
+  // Проверяем, не выполняется ли уже автоматизация
+  if (channel.automation.isRunning) {
+    console.log(
+      `[Automation] Channel ${channel.id} is already running, skipping`
+    );
+    return false;
+  }
 
-  // Проверяем день недели
-  const currentDay = getCurrentDayOfWeek();
-  const currentDayNumber = getCurrentDayOfWeekNumber();
+  const automation = channel.automation;
+  const timezone = automation.timeZone || DEFAULT_TIMEZONE;
+
+  // Получаем текущее время в указанном timezone
+  const currentTime = getCurrentTimeInTimezone(timezone);
+  const currentTimeUTC = new Date();
+
+  // Проверяем день недели в указанном timezone
+  const [currentDay, currentDayNumber] = getDayOfWeekInTimezone(
+    currentTimeUTC,
+    timezone
+  );
   const isDayMatch =
     automation.daysOfWeek.includes(currentDay) ||
     automation.daysOfWeek.includes(currentDayNumber);
@@ -46,28 +54,35 @@ function shouldRunAutomation(
   // Проверяем время
   const currentHour = currentTime.getHours();
   const currentMinute = currentTime.getMinutes();
-  const currentTimeString = `${String(currentHour).padStart(2, "0")}:${String(
-    currentMinute
-  ).padStart(2, "0")}`;
 
   // Проверяем, есть ли запланированное время в интервале
   for (const scheduledTime of automation.times) {
-    const [scheduledHour, scheduledMinute] = scheduledTime.split(":").map(Number);
-    const scheduledDate = new Date(currentTime);
-    scheduledDate.setHours(scheduledHour, scheduledMinute, 0, 0);
+    if (!scheduledTime || scheduledTime.trim() === "") {
+      continue;
+    }
+
+    const [scheduledHour, scheduledMinute] = scheduledTime
+      .split(":")
+      .map(Number);
 
     // Проверяем, что время уже наступило и в пределах интервала
     const diffMinutes =
-      (currentTime.getTime() - scheduledDate.getTime()) / (1000 * 60);
+      (currentHour * 60 + currentMinute) - (scheduledHour * 60 + scheduledMinute);
+
     if (diffMinutes >= 0 && diffMinutes <= intervalMinutes) {
       // Проверяем, не было ли уже запуска сегодня для этого времени
       if (automation.lastRunAt) {
         const lastRunDate = new Date(automation.lastRunAt);
+        const lastRunInTz = getCurrentTimeInTimezone(timezone);
+        lastRunInTz.setTime(lastRunDate.getTime());
+
         // Если последний запуск был сегодня и для этого же времени - пропускаем
         if (
-          lastRunDate.toDateString() === currentTime.toDateString() &&
-          lastRunDate.getHours() === scheduledHour &&
-          lastRunDate.getMinutes() === scheduledMinute
+          lastRunInTz.getDate() === currentTime.getDate() &&
+          lastRunInTz.getMonth() === currentTime.getMonth() &&
+          lastRunInTz.getFullYear() === currentTime.getFullYear() &&
+          lastRunInTz.getHours() === scheduledHour &&
+          lastRunInTz.getMinutes() === scheduledMinute
         ) {
           continue;
         }
@@ -103,8 +118,32 @@ async function getUsedIdeasForChannel(channelId: string): Promise<string[]> {
  * Создает автоматическую задачу генерации для канала
  */
 async function createAutomatedJob(channel: Channel): Promise<string | null> {
+  const timezone = channel.automation?.timeZone || DEFAULT_TIMEZONE;
+  const runId = `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
   try {
-    console.log(`[Automation] Creating automated job for channel ${channel.id}`);
+    const currentTimeInTz = getCurrentTimeInTimezone(timezone);
+    const timeString = formatDateInTimezone(Date.now(), timezone);
+    
+    console.log(
+      `[Automation] Creating automated job for channel ${channel.id} (${channel.name})`
+    );
+    console.log(
+      `[Automation] Timezone: ${timezone}, Current time: ${timeString}`
+    );
+    console.log(
+      `[Automation] Schedule: ${channel.automation?.times.join(", ")}, Days: ${channel.automation?.daysOfWeek.join(", ")}`
+    );
+
+    // Устанавливаем флаг isRunning
+    const { updateChannel } = await import("../models/channel");
+    await updateChannel(channel.id, {
+      automation: {
+        ...channel.automation!,
+        isRunning: true,
+        runId,
+      },
+    });
 
     // Проверяем лимит активных задач
     const activeCount = await countActiveJobs(channel.id);
@@ -113,6 +152,14 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
       console.log(
         `[Automation] Channel ${channel.id} has ${activeCount} active jobs, max is ${maxActive}, skipping`
       );
+      // Сбрасываем флаг isRunning
+      await updateChannel(channel.id, {
+        automation: {
+          ...channel.automation!,
+          isRunning: false,
+          runId: null,
+        },
+      });
       return null;
     }
 
@@ -193,15 +240,49 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
       `[Automation] ✅ Created automated job ${job.id} for channel ${channel.id}`
     );
 
-    // Обновляем lastRunAt для канала
-    const { updateChannel } = await import("../models/channel");
+    // Обновляем lastRunAt и пересчитываем nextRunAt
+    const { calculateNextRunAt } = await import("../utils/automationSchedule");
+    
     if (channel.automation) {
+      const nextRunAt = calculateNextRunAt(
+        channel.automation.times,
+        channel.automation.daysOfWeek,
+        timezone,
+        Date.now()
+      );
+      
       await updateChannel(channel.id, {
         automation: {
           ...channel.automation,
           lastRunAt: Date.now(),
+          nextRunAt,
+          isRunning: true,
+          runId,
         },
       });
+      
+      if (nextRunAt) {
+        const nextRunString = formatDateInTimezone(nextRunAt, timezone);
+        console.log(
+          `[Automation] Next run scheduled for: ${nextRunString} (${timezone})`
+        );
+      }
+    }
+
+    // Отправляем уведомление в Telegram (если настроено)
+    try {
+      const telegramChatId = process.env.AUTOMATION_DEBUG_CHAT_ID;
+      if (telegramChatId) {
+        const { getTelegramClient } = await import("../telegram/client");
+        const client = await getTelegramClient();
+        if (client) {
+          await client.sendMessage(telegramChatId, {
+            message: `[AUTOMATION] Канал "${channel.name}" (${channel.id}), запущен автогонератор в ${timeString} (${timezone}). Статус: успех. Job ID: ${job.id}`,
+          });
+        }
+      }
+    } catch (telegramError) {
+      console.warn("[Automation] Failed to send Telegram notification:", telegramError);
     }
 
     return job.id;
@@ -210,6 +291,38 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
       `[Automation] Error creating automated job for channel ${channel.id}:`,
       error
     );
+    
+    // Сбрасываем флаг isRunning при ошибке
+    try {
+      const { updateChannel } = await import("../models/channel");
+      await updateChannel(channel.id, {
+        automation: {
+          ...channel.automation!,
+          isRunning: false,
+          runId: null,
+        },
+      });
+    } catch (updateError) {
+      console.error("[Automation] Failed to reset isRunning flag:", updateError);
+    }
+    
+    // Отправляем уведомление об ошибке
+    try {
+      const telegramChatId = process.env.AUTOMATION_DEBUG_CHAT_ID;
+      if (telegramChatId) {
+        const { getTelegramClient } = await import("../telegram/client");
+        const client = await getTelegramClient();
+        if (client) {
+          const timeString = formatDateInTimezone(Date.now(), timezone);
+          await client.sendMessage(telegramChatId, {
+            message: `[AUTOMATION] Канал "${channel.name}" (${channel.id}), ошибка при запуске автогонератора в ${timeString} (${timezone}). Ошибка: ${error.message}`,
+          });
+        }
+      }
+    } catch (telegramError) {
+      // Игнорируем ошибки Telegram
+    }
+    
     return null;
   }
 }
@@ -220,9 +333,15 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
  */
 router.post("/run-scheduled", async (req: Request, res: Response) => {
   try {
+    const currentTimeUTC = new Date();
+    const currentTimeInDefaultTz = getCurrentTimeInTimezone(DEFAULT_TIMEZONE);
+    const timeString = formatDateInTimezone(Date.now(), DEFAULT_TIMEZONE);
+    
     console.log("[Automation] Running scheduled automation check...");
-    const currentTime = new Date();
-    const intervalMinutes = 10; // Интервал проверки (5-10 минут)
+    console.log(`[Automation] UTC time: ${currentTimeUTC.toISOString()}`);
+    console.log(`[Automation] ${DEFAULT_TIMEZONE} time: ${timeString}`);
+    
+    const intervalMinutes = 10; // Интервал проверки (10 минут)
 
     // Получаем все каналы
     const channels = await getAllChannels();
@@ -234,16 +353,29 @@ router.post("/run-scheduled", async (req: Request, res: Response) => {
       `[Automation] Found ${enabledChannels.length} channels with automation enabled`
     );
 
-    const results: Array<{ channelId: string; jobId: string | null; error?: string }> = [];
+    const results: Array<{
+      channelId: string;
+      channelName: string;
+      jobId: string | null;
+      error?: string;
+      timezone?: string;
+    }> = [];
 
     for (const channel of enabledChannels) {
       try {
-        if (shouldRunAutomation(channel, currentTime, intervalMinutes)) {
+        const timezone = channel.automation?.timeZone || DEFAULT_TIMEZONE;
+        
+        if (shouldRunAutomation(channel, intervalMinutes)) {
           console.log(
-            `[Automation] Channel ${channel.id} (${channel.name}) should run automation`
+            `[Automation] Channel ${channel.id} (${channel.name}) should run automation (timezone: ${timezone})`
           );
           const jobId = await createAutomatedJob(channel);
-          results.push({ channelId: channel.id, jobId });
+          results.push({
+            channelId: channel.id,
+            channelName: channel.name,
+            jobId,
+            timezone,
+          });
         }
       } catch (error: any) {
         console.error(
@@ -252,15 +384,23 @@ router.post("/run-scheduled", async (req: Request, res: Response) => {
         );
         results.push({
           channelId: channel.id,
+          channelName: channel.name,
           jobId: null,
           error: error.message,
+          timezone: channel.automation?.timeZone || DEFAULT_TIMEZONE,
         });
       }
     }
 
+    console.log(
+      `[Automation] Processed ${results.length} channels, ${results.filter((r) => r.jobId).length} jobs created`
+    );
+
     res.json({
       success: true,
-      timestamp: currentTime.toISOString(),
+      timestamp: currentTimeUTC.toISOString(),
+      timezone: DEFAULT_TIMEZONE,
+      timezoneTime: timeString,
       processed: results.length,
       results,
     });

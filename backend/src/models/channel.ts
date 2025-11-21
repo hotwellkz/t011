@@ -9,6 +9,10 @@ export interface ChannelAutomation {
   useOnlyFreshIdeas: boolean;
   maxActiveTasks: number;
   lastRunAt?: number | null; // Timestamp последнего запуска
+  timeZone?: string; // Часовой пояс, например "Asia/Almaty"
+  nextRunAt?: number | null; // Timestamp следующего запланированного запуска
+  isRunning?: boolean; // Флаг, что автоматизация сейчас выполняет цикл
+  runId?: string | null; // ID текущего запуска для отслеживания
 }
 
 export interface Channel {
