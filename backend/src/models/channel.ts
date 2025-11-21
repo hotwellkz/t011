@@ -20,7 +20,7 @@ export interface Channel {
   ideaPromptTemplate: string; // Шаблон промпта для генерации идей
   videoPromptTemplate: string; // Шаблон промпта для генерации финального промпта Veo
   gdriveFolderId?: string | null; // ID папки Google Drive для этого канала (если null, используется GDRIVE_FOLDER_ID из .env)
-  externalUrl?: string | undefined; // Ссылка на YouTube-канал
+  externalUrl?: string | null; // Ссылка на YouTube-канал
   automation?: ChannelAutomation; // Настройки автоматизации
 }
 

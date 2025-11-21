@@ -176,11 +176,19 @@ const ChannelSettings: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className="channel-settings-container">
       <div className="card">
         <h2>{editingId ? 'Редактировать канал' : 'Добавить канал'}</h2>
-        {error && <div className="error">{error}</div>}
-        {success && <div className="success">{success}</div>}
+        {error && (
+          <div className="error channel-settings-alert" role="alert">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="success channel-settings-alert" role="alert">
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="input-group">
@@ -459,10 +467,10 @@ const ChannelSettings: React.FC = () => {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="channel-settings-form-actions">
             <button
               type="submit"
-              className="button"
+              className="button channel-settings-submit-button"
               disabled={loading}
             >
               {loading ? 'Сохранение...' : editingId ? 'Сохранить изменения' : 'Создать канал'}
@@ -470,7 +478,7 @@ const ChannelSettings: React.FC = () => {
             {editingId && (
               <button
                 type="button"
-                className="button"
+                className="button channel-settings-cancel-button"
                 onClick={resetForm}
                 disabled={loading}
               >
@@ -485,56 +493,95 @@ const ChannelSettings: React.FC = () => {
         <h2>Список каналов</h2>
         <div className="channel-list">
           {channels.length === 0 ? (
-            <p style={{ color: '#718096' }}>Каналы не найдены</p>
+            <p className="channel-list-empty">Каналы не найдены</p>
           ) : (
-            <div className="table-scroll">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Имя</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Язык</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Длительность</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {channels.map((channel) => (
-                    <tr key={channel.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '0.75rem' }}>
-                        <strong>{channel.name}</strong>
-                        {channel.description && (
-                          <div style={{ fontSize: '0.875rem', color: '#718096', marginTop: '0.25rem' }}>
-                            {channel.description}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>{channel.language.toUpperCase()}</td>
-                      <td style={{ padding: '0.75rem' }}>{channel.durationSeconds}с</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <button
-                            className="button"
-                            onClick={() => handleEdit(channel)}
-                            disabled={loading}
-                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                          >
-                            Редактировать
-                          </button>
-                          <button
-                            className="button button-danger"
-                            onClick={() => handleDelete(channel.id)}
-                            disabled={loading}
-                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                          >
-                            Удалить
-                          </button>
-                        </div>
-                      </td>
+            <>
+              {/* Десктопная таблица */}
+              <div className="channel-list-table-wrapper">
+                <table className="channel-list-table">
+                  <thead>
+                    <tr>
+                      <th>Имя</th>
+                      <th>Язык</th>
+                      <th>Длительность</th>
+                      <th>Действия</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {channels.map((channel) => (
+                      <tr key={channel.id}>
+                        <td>
+                          <strong>{channel.name}</strong>
+                          {channel.description && (
+                            <div className="channel-description">{channel.description}</div>
+                          )}
+                        </td>
+                        <td>{channel.language.toUpperCase()}</td>
+                        <td>{channel.durationSeconds}с</td>
+                        <td>
+                          <div className="channel-actions-desktop">
+                            <button
+                              className="button"
+                              onClick={() => handleEdit(channel)}
+                              disabled={loading}
+                            >
+                              Редактировать
+                            </button>
+                            <button
+                              className="button button-danger"
+                              onClick={() => handleDelete(channel.id)}
+                              disabled={loading}
+                            >
+                              Удалить
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Мобильные карточки */}
+              <div className="channel-list-cards">
+                {channels.map((channel) => (
+                  <div key={channel.id} className="channel-card-mobile">
+                    <div className="channel-card-mobile__header">
+                      <div className="channel-card-mobile__info">
+                        <h3 className="channel-card-mobile__name">{channel.name}</h3>
+                        {channel.description && (
+                          <p className="channel-card-mobile__description">{channel.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="channel-card-mobile__meta">
+                      <span className="channel-card-mobile__meta-item">
+                        <strong>Язык:</strong> {channel.language.toUpperCase()}
+                      </span>
+                      <span className="channel-card-mobile__meta-item">
+                        <strong>Длительность:</strong> {channel.durationSeconds}с
+                      </span>
+                    </div>
+                    <div className="channel-card-mobile__actions">
+                      <button
+                        className="button channel-card-mobile__button"
+                        onClick={() => handleEdit(channel)}
+                        disabled={loading}
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        className="button button-danger channel-card-mobile__button"
+                        onClick={() => handleDelete(channel.id)}
+                        disabled={loading}
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
