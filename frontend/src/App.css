@@ -2292,3 +2292,519 @@
   }
 }
 
+/* ============================================
+   БЛОК АВТОМАТИЗАЦИИ - УЛУЧШЕННЫЙ ДИЗАЙН
+   ============================================ */
+
+.automation-block {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f7fafc;
+  transition: all 0.3s ease;
+}
+
+.automation-block--enabled {
+  border-color: #667eea;
+  background: #f0f4ff;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.automation-block--disabled {
+  opacity: 0.7;
+  border-color: #cbd5e0;
+}
+
+.automation-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.automation-block__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a202c;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.automation-block__icon {
+  font-size: 1.5rem;
+}
+
+.automation-block__hint {
+  margin: 0 0 1.5rem 0;
+  padding: 0.875rem;
+  background: rgba(102, 126, 234, 0.1);
+  border-left: 3px solid #667eea;
+  border-radius: 6px;
+  color: #4a5568;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.automation-block--disabled .automation-block__hint {
+  background: #edf2f7;
+  border-left-color: #cbd5e0;
+  color: #718096;
+}
+
+.automation-block__content {
+  transition: opacity 0.3s ease;
+}
+
+.automation-block__content--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Тумблер ON/OFF */
+.automation-toggle {
+  flex-shrink: 0;
+}
+
+.automation-toggle__button {
+  position: relative;
+  width: 80px;
+  height: 40px;
+  border: 2px solid #cbd5e0;
+  border-radius: 20px;
+  background: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.automation-toggle__button:hover {
+  border-color: #a0aec0;
+}
+
+.automation-toggle__button--on {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.automation-toggle__button--off {
+  background: #e2e8f0;
+  border-color: #cbd5e0;
+}
+
+.automation-toggle__slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 36px;
+  height: 36px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.automation-toggle__button--on .automation-toggle__slider {
+  transform: translateX(40px);
+}
+
+.automation-toggle__label {
+  position: absolute;
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: opacity 0.3s ease;
+  line-height: 1;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.automation-toggle__label--on {
+  left: 8px;
+  color: white;
+  opacity: 0;
+}
+
+.automation-toggle__label--off {
+  right: 8px;
+  color: #718096;
+  opacity: 1;
+}
+
+.automation-toggle__button--on .automation-toggle__label--on {
+  opacity: 1;
+}
+
+.automation-toggle__button--on .automation-toggle__label--off {
+  opacity: 0;
+}
+
+.automation-toggle__button--off .automation-toggle__label--on {
+  opacity: 0;
+}
+
+.automation-toggle__button--off .automation-toggle__label--off {
+  opacity: 1;
+}
+
+/* Стили для полей автоматизации */
+.automation-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.automation-select,
+.automation-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  background: white;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.automation-select:focus,
+.automation-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.automation-select:disabled,
+.automation-input:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.automation-hint {
+  display: block;
+  margin-top: 0.5rem;
+  color: #718096;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Время генерации */
+.automation-times {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.automation-time-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  background: white;
+  min-height: 44px;
+}
+
+.automation-time-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.automation-time-input:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Дни недели - кнопки-чипы */
+.automation-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.automation-day-chip {
+  padding: 0.625rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #4a5568;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  min-width: 50px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1;
+  max-width: calc(33.333% - 0.5rem);
+}
+
+.automation-day-chip:hover:not(:disabled) {
+  border-color: #cbd5e0;
+  background: #f7fafc;
+  transform: translateY(-1px);
+}
+
+.automation-day-chip--active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.automation-day-chip--active:hover:not(:disabled) {
+  background: #5568d3;
+  border-color: #5568d3;
+  transform: translateY(-1px);
+}
+
+.automation-day-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.automation-day-chip:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Опции автоматизации */
+.automation-options {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.automation-options__title {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.automation-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.automation-checkbox:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.automation-checkbox:has(input:disabled):hover {
+  background: transparent;
+}
+
+.automation-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #667eea;
+}
+
+.automation-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.automation-checkbox__label {
+  flex: 1;
+  color: #4a5568;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  user-select: none;
+}
+
+.automation-checkbox:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Описание работы автоматизации */
+.automation-description {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.automation-description__title {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.automation-description__list {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.automation-description__list li {
+  margin-bottom: 0.5rem;
+}
+
+.automation-description__list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+  .automation-block {
+    padding: 1.25rem;
+    border-radius: 10px;
+    margin-top: 1.5rem;
+  }
+
+  .automation-block__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .automation-block__title {
+    font-size: 1.1rem;
+  }
+
+  .automation-toggle {
+    width: 100%;
+  }
+
+  .automation-toggle__button {
+    width: 100%;
+    max-width: 120px;
+  }
+
+  .automation-block__hint {
+    font-size: 0.85rem;
+    padding: 0.75rem;
+  }
+
+  .automation-days {
+    gap: 0.5rem;
+  }
+
+  .automation-day-chip {
+    flex: 1;
+    max-width: calc(50% - 0.25rem);
+    min-width: calc(50% - 0.25rem);
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .automation-options {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .automation-checkbox {
+    padding: 0.625rem;
+  }
+
+  .automation-checkbox__label {
+    font-size: 0.85rem;
+  }
+
+  .automation-description {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+  }
+
+  .automation-description__list {
+    font-size: 0.8rem;
+    padding-left: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .automation-block {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+
+  .automation-block__title {
+    font-size: 1rem;
+  }
+
+  .automation-block__icon {
+    font-size: 1.25rem;
+  }
+
+  .automation-toggle__button {
+    height: 44px;
+    max-width: 100px;
+  }
+
+  .automation-toggle__slider {
+    width: 40px;
+    height: 40px;
+  }
+
+  .automation-toggle__button--on .automation-toggle__slider {
+    transform: translateX(56px);
+  }
+
+  .automation-toggle__label {
+    font-size: 0.65rem;
+  }
+
+  .automation-day-chip {
+    max-width: calc(50% - 0.25rem);
+    min-width: calc(50% - 0.25rem);
+    padding: 0.625rem 0.5rem;
+    font-size: 0.8rem;
+    min-height: 44px;
+  }
+
+  .automation-hint {
+    font-size: 0.8rem;
+  }
+
+  .automation-description__title {
+    font-size: 0.9rem;
+  }
+
+  .automation-description__list {
+    font-size: 0.75rem;
+    padding-left: 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .automation-day-chip {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .automation-block__hint {
+    font-size: 0.8rem;
+    padding: 0.625rem;
+  }
+}
+

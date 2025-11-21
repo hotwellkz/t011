@@ -316,54 +316,69 @@ const ChannelSettings: React.FC = () => {
           </div>
 
           {/* Блок автоматизации */}
-          <div style={{ marginTop: '2rem', padding: '1.5rem', border: '2px solid #e2e8f0', borderRadius: '10px', background: '#f7fafc' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Автоматизация роликов</h3>
-            
-            <div className="input-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={formData.automation.enabled}
-                  onChange={(e) => {
+          <div className={`automation-block ${formData.automation.enabled ? 'automation-block--enabled' : 'automation-block--disabled'}`}>
+            <div className="automation-block__header">
+              <h3 className="automation-block__title">
+                <span className="automation-block__icon">🔄</span>
+                Автоматизация роликов
+              </h3>
+              <div className="automation-toggle">
+                <button
+                  type="button"
+                  className={`automation-toggle__button ${formData.automation.enabled ? 'automation-toggle__button--on' : 'automation-toggle__button--off'}`}
+                  onClick={() => {
                     setFormData({
                       ...formData,
-                      automation: { ...formData.automation, enabled: e.target.checked }
+                      automation: { ...formData.automation, enabled: !formData.automation.enabled }
                     })
                   }}
-                />
-                <span>Автоматизация включена</span>
-              </label>
+                  aria-label={formData.automation.enabled ? 'Выключить автоматизацию' : 'Включить автоматизацию'}
+                >
+                  <span className="automation-toggle__slider">
+                    <span className="automation-toggle__label automation-toggle__label--on">ON</span>
+                    <span className="automation-toggle__label automation-toggle__label--off">OFF</span>
+                  </span>
+                </button>
+              </div>
             </div>
 
-            {formData.automation.enabled && (
-              <>
-                <div className="input-group">
-                  <label>Частота</label>
-                  <select
-                    value={formData.automation.frequencyPerDay}
-                    onChange={(e) => {
-                      const freq = parseInt(e.target.value)
-                      const times = freq > 0 ? Array(freq).fill('').map((_, i) => i === 0 ? '10:00' : '') : ['']
-                      setFormData({
-                        ...formData,
-                        automation: { ...formData.automation, frequencyPerDay: freq, times }
-                      })
-                    }}
-                  >
-                    <option value={0}>Нет</option>
-                    <option value={1}>1 ролик в день</option>
-                    <option value={2}>2 ролика в день</option>
-                    <option value={3}>3 ролика в день</option>
-                  </select>
-                </div>
+            <p className="automation-block__hint">
+              Когда автоматизация включена — система автоматически создаёт идеи, промпты и генерирует видео по расписанию.
+            </p>
 
-                {formData.automation.frequencyPerDay > 0 && (
-                  <div className="input-group">
-                    <label>Время генерации (HH:mm)</label>
+            <div className={`automation-block__content ${!formData.automation.enabled ? 'automation-block__content--disabled' : ''}`}>
+              <div className="input-group">
+                <label className="automation-label">Частота генерации</label>
+                <select
+                  className="automation-select"
+                  value={formData.automation.frequencyPerDay}
+                  onChange={(e) => {
+                    const freq = parseInt(e.target.value)
+                    const times = freq > 0 ? Array(freq).fill('').map((_, i) => i === 0 ? '10:00' : '') : ['']
+                    setFormData({
+                      ...formData,
+                      automation: { ...formData.automation, frequencyPerDay: freq, times }
+                    })
+                  }}
+                  disabled={!formData.automation.enabled}
+                >
+                  <option value={0}>Нет</option>
+                  <option value={1}>1 ролик в день</option>
+                  <option value={2}>2 ролика в день</option>
+                  <option value={3}>3 ролика в день</option>
+                </select>
+                <small className="automation-hint">Выберите, сколько роликов создавать в день</small>
+              </div>
+
+              {formData.automation.frequencyPerDay > 0 && (
+                <div className="input-group">
+                  <label className="automation-label">Время генерации (HH:mm)</label>
+                  <div className="automation-times">
                     {Array.from({ length: formData.automation.frequencyPerDay }).map((_, index) => (
                       <input
                         key={index}
                         type="time"
+                        className="automation-time-input"
                         value={formData.automation.times[index] || ''}
                         onChange={(e) => {
                           const newTimes = [...formData.automation.times]
@@ -373,98 +388,124 @@ const ChannelSettings: React.FC = () => {
                             automation: { ...formData.automation, times: newTimes }
                           })
                         }}
-                        style={{ marginBottom: '0.5rem' }}
+                        disabled={!formData.automation.enabled}
                       />
                     ))}
                   </div>
-                )}
-
-                <div className="input-group">
-                  <label>Дни недели</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => {
-                      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                      const dayNumber = String(index + 1)
-                      const isChecked = formData.automation.daysOfWeek.includes(dayNames[index]) || 
-                                       formData.automation.daysOfWeek.includes(dayNumber)
-                      return (
-                        <label key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              const newDays = [...formData.automation.daysOfWeek]
-                              if (e.target.checked) {
-                                if (!newDays.includes(dayNames[index])) newDays.push(dayNames[index])
-                                if (!newDays.includes(dayNumber)) newDays.push(dayNumber)
-                              } else {
-                                const idx1 = newDays.indexOf(dayNames[index])
-                                const idx2 = newDays.indexOf(dayNumber)
-                                if (idx1 >= 0) newDays.splice(idx1, 1)
-                                if (idx2 >= 0) newDays.splice(idx2, 1)
-                              }
-                              setFormData({
-                                ...formData,
-                                automation: { ...formData.automation, daysOfWeek: newDays }
-                              })
-                            }}
-                          />
-                          <span>{day}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
+                  <small className="automation-hint">Укажите время, когда должна запускаться генерация</small>
                 </div>
+              )}
 
-                <div className="input-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={formData.automation.autoApproveAndUpload}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          automation: { ...formData.automation, autoApproveAndUpload: e.target.checked }
-                        })
-                      }}
-                    />
-                    <span>Автоматически одобрять и отправлять в Google Drive / YouTube</span>
-                  </label>
+              <div className="input-group">
+                <label className="automation-label">Дни недели</label>
+                <div className="automation-days">
+                  {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => {
+                    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    const dayNumber = String(index + 1)
+                    const isChecked = formData.automation.daysOfWeek.includes(dayNames[index]) || 
+                                     formData.automation.daysOfWeek.includes(dayNumber)
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`automation-day-chip ${isChecked ? 'automation-day-chip--active' : ''}`}
+                        onClick={() => {
+                          const newDays = [...formData.automation.daysOfWeek]
+                          if (isChecked) {
+                            const idx1 = newDays.indexOf(dayNames[index])
+                            const idx2 = newDays.indexOf(dayNumber)
+                            if (idx1 >= 0) newDays.splice(idx1, 1)
+                            if (idx2 >= 0) newDays.splice(idx2, 1)
+                          } else {
+                            if (!newDays.includes(dayNames[index])) newDays.push(dayNames[index])
+                            if (!newDays.includes(dayNumber)) newDays.push(dayNumber)
+                          }
+                          setFormData({
+                            ...formData,
+                            automation: { ...formData.automation, daysOfWeek: newDays }
+                          })
+                        }}
+                        disabled={!formData.automation.enabled}
+                        aria-pressed={isChecked}
+                      >
+                        {day}
+                      </button>
+                    )
+                  })}
                 </div>
+                <small className="automation-hint">В какие дни автоматизация должна запускать создание роликов</small>
+              </div>
 
-                <div className="input-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={formData.automation.useOnlyFreshIdeas}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          automation: { ...formData.automation, useOnlyFreshIdeas: e.target.checked }
-                        })
-                      }}
-                    />
-                    <span>Использовать только новые идеи (не повторяться)</span>
-                  </label>
-                </div>
-
-                <div className="input-group">
-                  <label>Максимум активных генераций на канал</label>
+              <div className="automation-options">
+                <h4 className="automation-options__title">Опции автоматизации</h4>
+                
+                <label className="automation-checkbox">
                   <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.automation.maxActiveTasks}
+                    type="checkbox"
+                    checked={formData.automation.useOnlyFreshIdeas}
                     onChange={(e) => {
                       setFormData({
                         ...formData,
-                        automation: { ...formData.automation, maxActiveTasks: parseInt(e.target.value) || 2 }
+                        automation: { ...formData.automation, useOnlyFreshIdeas: e.target.checked }
                       })
                     }}
+                    disabled={!formData.automation.enabled}
                   />
-                </div>
-              </>
-            )}
+                  <span className="automation-checkbox__label">
+                    Использовать только новые идеи (не повторяться)
+                  </span>
+                </label>
+
+                <label className="automation-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={formData.automation.autoApproveAndUpload}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        automation: { ...formData.automation, autoApproveAndUpload: e.target.checked }
+                      })
+                    }}
+                    disabled={!formData.automation.enabled}
+                  />
+                  <span className="automation-checkbox__label">
+                    Автоматически одобрять и отправлять в Google Drive / YouTube
+                  </span>
+                </label>
+              </div>
+
+              <div className="input-group">
+                <label className="automation-label">Одновременно создаваемых видео</label>
+                <input
+                  type="number"
+                  className="automation-input"
+                  min="1"
+                  max="10"
+                  value={formData.automation.maxActiveTasks}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      automation: { ...formData.automation, maxActiveTasks: parseInt(e.target.value) || 2 }
+                    })
+                  }}
+                  disabled={!formData.automation.enabled}
+                />
+                <small className="automation-hint">
+                  Чтобы сервер не перегружался, можно ограничить количество параллельных генераций
+                </small>
+              </div>
+            </div>
+
+            <div className="automation-description">
+              <h4 className="automation-description__title">Как работает автоматизация:</h4>
+              <ol className="automation-description__list">
+                <li>Генерирует указанное количество идей для канала</li>
+                <li>Выбирает 1 идею и генерирует PROMPT для Veo 3.1 Fast</li>
+                <li>Создаёт задачу генерации видео</li>
+                <li>Дожидается готового результата от Syntex</li>
+                <li>Автоматически нажимает «Одобрить» и загружает видео в Google Drive / YouTube</li>
+              </ol>
+            </div>
           </div>
 
           <div className="channel-settings-form-actions">
