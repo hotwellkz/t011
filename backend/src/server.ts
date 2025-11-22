@@ -138,12 +138,26 @@ app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 API доступен по адресу http://localhost:${PORT}/api`);
   
-  // Запускаем планировщик автоматизации
-  // Проверяем каждые 5 минут, нужно ли запускать автоматизацию
-  // Используем cron: "*/5 * * * *" - каждые 5 минут
-  const automationSchedule = process.env.AUTOMATION_SCHEDULE || "*/5 * * * *";
+  // ⚠️ ВАЖНО: node-cron НЕ РАБОТАЕТ надежно в Cloud Run!
+  // Cloud Run — это serverless платформа, контейнеры могут останавливаться.
+  // Для production используйте Cloud Scheduler (см. CLOUD_SCHEDULER_SETUP.md)
+  // 
+  // Локальный планировщик оставлен только для разработки.
+  // В production автоматизация должна запускаться через Cloud Scheduler,
+  // который вызывает endpoint /api/automation/run-scheduled
   
-  cron.schedule(automationSchedule, async () => {
+  const enableLocalCron = process.env.ENABLE_LOCAL_CRON === "true";
+  
+  if (enableLocalCron) {
+    console.log("⚠️  [WARNING] Локальный cron-планировщик включен (только для разработки!)");
+    console.log("⚠️  [WARNING] В production используйте Cloud Scheduler!");
+    
+    // Запускаем планировщик автоматизации (только для локальной разработки)
+    // Проверяем каждые 5 минут, нужно ли запускать автоматизацию
+    // Используем cron: "*/5 * * * *" - каждые 5 минут
+    const automationSchedule = process.env.AUTOMATION_SCHEDULE || "*/5 * * * *";
+    
+    cron.schedule(automationSchedule, async () => {
     try {
       // Вызываем функцию напрямую, а не через HTTP
       const { default: automationRouter } = await import("./api/automation");
@@ -271,10 +285,16 @@ app.listen(PORT, () => {
     } catch (error: any) {
       console.error("[Automation Scheduler] Error:", error.message);
     }
-  }, {
-    timezone: "Asia/Almaty", // Используем Asia/Almaty для планировщика
-  });
-  
-  console.log(`⏰ Планировщик автоматизации запущен (расписание: ${automationSchedule}, timezone: Asia/Almaty)`);
+    }, {
+      timezone: "Asia/Almaty", // Используем Asia/Almaty для планировщика
+    });
+    
+    console.log(`⏰ [LOCAL DEV] Планировщик автоматизации запущен (расписание: ${automationSchedule}, timezone: Asia/Almaty)`);
+    console.log(`⚠️  [LOCAL DEV] Это работает только локально! В production используйте Cloud Scheduler!`);
+  } else {
+    console.log("ℹ️  Локальный cron-планировщик отключен (ENABLE_LOCAL_CRON != true)");
+    console.log("ℹ️  Для автоматизации в production настройте Cloud Scheduler (см. CLOUD_SCHEDULER_SETUP.md)");
+    console.log("ℹ️  Endpoint для Cloud Scheduler: POST /api/automation/run-scheduled");
+  }
 });
 

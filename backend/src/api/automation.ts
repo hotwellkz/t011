@@ -134,19 +134,18 @@ async function getUsedIdeasForChannel(channelId: string): Promise<string[]> {
 export async function createAutomatedJob(channel: Channel): Promise<string | null> {
   const timezone = channel.automation?.timeZone || DEFAULT_TIMEZONE;
   const runId = `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const startTime = Date.now();
   
   try {
     const timeString = formatDateInTimezone(Date.now(), timezone);
     
-    console.log(
-      `[Automation] Creating automated job for channel ${channel.id} (${channel.name})`
-    );
-    console.log(
-      `[Automation] Timezone: ${timezone}, Current time: ${timeString}`
-    );
-    console.log(
-      `[Automation] Schedule: ${channel.automation?.times.join(", ")}, Days: ${channel.automation?.daysOfWeek.join(", ")}`
-    );
+    console.log("─".repeat(80));
+    console.log(`[Automation] 🚀 Creating automated job for channel: ${channel.id} (${channel.name})`);
+    console.log(`[Automation] Run ID: ${runId}`);
+    console.log(`[Automation] Timezone: ${timezone}, Current time: ${timeString}`);
+    console.log(`[Automation] Schedule: ${channel.automation?.times.join(", ") || "none"}`);
+    console.log(`[Automation] Days: ${channel.automation?.daysOfWeek.join(", ") || "none"}`);
+    console.log("─".repeat(80));
 
     // Устанавливаем флаг isRunning
     const { updateChannel } = await import("../models/channel");
@@ -162,9 +161,9 @@ export async function createAutomatedJob(channel: Channel): Promise<string | nul
     const activeCount = await countActiveJobs(channel.id);
     const maxActive = channel.automation?.maxActiveTasks || 2;
     if (activeCount >= maxActive) {
-      console.log(
-        `[Automation] Channel ${channel.id} has ${activeCount} active jobs, max is ${maxActive}, skipping`
-      );
+      console.log("─".repeat(80));
+      console.log(`[Automation] ⚠️  SKIPPED: Channel ${channel.id} has ${activeCount} active jobs, max is ${maxActive}`);
+      console.log("─".repeat(80));
       // Сбрасываем флаг isRunning
       await updateChannel(channel.id, {
         automation: {
@@ -249,9 +248,13 @@ export async function createAutomatedJob(channel: Channel): Promise<string | nul
     const { updateJob } = await import("../models/videoJob");
     await updateJob(job.id, { isAuto: true });
 
-    console.log(
-      `[Automation] ✅ Created automated job ${job.id} for channel ${channel.id}`
-    );
+    const duration = Date.now() - startTime;
+    console.log("─".repeat(80));
+    console.log(`[Automation] ✅ SUCCESS: Created automated job ${job.id} for channel ${channel.id}`);
+    console.log(`[Automation] Duration: ${duration}ms`);
+    console.log(`[Automation] Idea: ${selectedIdea.title}`);
+    console.log(`[Automation] Video title: ${veoPromptResult.videoTitle}`);
+    console.log("─".repeat(80));
 
     // Обновляем lastRunAt и пересчитываем nextRunAt только после успешного создания задачи
     const { calculateNextRunAt } = await import("../utils/automationSchedule");
@@ -305,10 +308,13 @@ export async function createAutomatedJob(channel: Channel): Promise<string | nul
 
     return job.id;
   } catch (error: any) {
-    console.error(
-      `[Automation] Error creating automated job for channel ${channel.id}:`,
-      error
-    );
+    const duration = Date.now() - startTime;
+    console.error("─".repeat(80));
+    console.error(`[Automation] ❌ ERROR: Failed to create automated job for channel ${channel.id}`);
+    console.error(`[Automation] Error: ${error.message}`);
+    console.error(`[Automation] Stack: ${error.stack}`);
+    console.error(`[Automation] Duration: ${duration}ms`);
+    console.error("─".repeat(80));
     
     // Сбрасываем флаг isRunning при ошибке
     try {
@@ -408,15 +414,32 @@ router.post("/channels/:channelId/run-now", async (req: Request, res: Response) 
 /**
  * POST /api/automation/run-scheduled
  * Запускает автоматизацию для всех каналов, у которых наступило время
+ * 
+ * Этот endpoint должен вызываться Cloud Scheduler каждые 5 минут.
+ * 
+ * Настройка Cloud Scheduler:
+ * gcloud scheduler jobs create http automation-run-scheduled \
+ *   --location=europe-central2 \
+ *   --schedule="*/5 * * * *" \
+ *   --uri="https://YOUR_SERVICE_URL/api/automation/run-scheduled" \
+ *   --http-method=POST \
+ *   --time-zone="Asia/Almaty"
+ * 
+ * См. CLOUD_SCHEDULER_SETUP.md для подробной инструкции.
  */
 router.post("/run-scheduled", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  
   try {
     const currentTimeUTC = new Date();
     const timeString = formatDateInTimezone(Date.now(), DEFAULT_TIMEZONE);
     
-    console.log("[Automation] Running scheduled automation check...");
+    console.log("=".repeat(80));
+    console.log("[Automation] ===== SCHEDULED AUTOMATION CHECK STARTED =====");
+    console.log(`[Automation] Triggered by: ${req.headers['user-agent'] || 'Unknown'}`);
     console.log(`[Automation] UTC time: ${currentTimeUTC.toISOString()}`);
     console.log(`[Automation] ${DEFAULT_TIMEZONE} time: ${timeString}`);
+    console.log("=".repeat(80));
     
     const intervalMinutes = 10; // Интервал проверки (10 минут)
 
@@ -469,9 +492,15 @@ router.post("/run-scheduled", async (req: Request, res: Response) => {
       }
     }
 
-    console.log(
-      `[Automation] Processed ${results.length} channels, ${results.filter((r) => r.jobId).length} jobs created`
-    );
+    const jobsCreated = results.filter((r) => r.jobId).length;
+    const duration = Date.now() - startTime;
+    
+    console.log("=".repeat(80));
+    console.log(`[Automation] ===== SCHEDULED AUTOMATION CHECK COMPLETED =====`);
+    console.log(`[Automation] Processed: ${results.length} channels`);
+    console.log(`[Automation] Jobs created: ${jobsCreated}`);
+    console.log(`[Automation] Duration: ${duration}ms`);
+    console.log("=".repeat(80));
 
     res.json({
       success: true,
@@ -479,13 +508,23 @@ router.post("/run-scheduled", async (req: Request, res: Response) => {
       timezone: DEFAULT_TIMEZONE,
       timezoneTime: timeString,
       processed: results.length,
+      jobsCreated,
+      duration: `${duration}ms`,
       results,
     });
   } catch (error: any) {
-    console.error("[Automation] Error in run-scheduled:", error);
+    const duration = Date.now() - startTime;
+    console.error("=".repeat(80));
+    console.error("[Automation] ===== SCHEDULED AUTOMATION CHECK FAILED =====");
+    console.error(`[Automation] Error: ${error.message}`);
+    console.error(`[Automation] Stack: ${error.stack}`);
+    console.error(`[Automation] Duration: ${duration}ms`);
+    console.error("=".repeat(80));
+    
     res.status(500).json({
       error: "Ошибка при запуске автоматизации",
       message: error.message,
+      duration: `${duration}ms`,
     });
   }
 });
