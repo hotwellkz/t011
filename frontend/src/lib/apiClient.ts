@@ -10,7 +10,6 @@ class ApiError extends Error {
     this.body = body
     this.isNetworkError = isNetworkError
     if (cause) {
-      // @ts-expect-error cause доступен в новых версиях Node/TS, но для обратной совместимости присваиваем вручную
       this.cause = cause
     }
   }
@@ -87,13 +86,17 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     response = await fetchWithRetry(targetUrl, options)
   } catch (error) {
     // Логируем детали ошибки для диагностики
-    console.error('[apiClient] Network error:', {
+    const errorDetails: any = {
       url: targetUrl,
       path,
       baseUrl: API_BASE_URL,
-      error: error instanceof Error ? error.message : String(error),
-      cause: error instanceof Error && error.cause ? error.cause : undefined
-    })
+      error: error instanceof Error ? error.message : String(error)
+    }
+    // Добавляем cause только если он доступен (ES2022+)
+    if (error instanceof Error && 'cause' in error && error.cause) {
+      errorDetails.cause = error.cause
+    }
+    console.error('[apiClient] Network error:', errorDetails)
     throw new ApiError('NETWORK_ERROR', undefined, undefined, true, error)
   }
 
