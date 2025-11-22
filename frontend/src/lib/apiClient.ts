@@ -86,6 +86,14 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     // Используем retry механизм для сетевых и серверных ошибок
     response = await fetchWithRetry(targetUrl, options)
   } catch (error) {
+    // Логируем детали ошибки для диагностики
+    console.error('[apiClient] Network error:', {
+      url: targetUrl,
+      path,
+      baseUrl: API_BASE_URL,
+      error: error instanceof Error ? error.message : String(error),
+      cause: error instanceof Error && error.cause ? error.cause : undefined
+    })
     throw new ApiError('NETWORK_ERROR', undefined, undefined, true, error)
   }
 
