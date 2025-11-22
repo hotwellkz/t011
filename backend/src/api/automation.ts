@@ -129,8 +129,9 @@ async function getUsedIdeasForChannel(channelId: string): Promise<string[]> {
 
 /**
  * Создает автоматическую задачу генерации для канала
+ * Экспортируем для использования в планировщике
  */
-async function createAutomatedJob(channel: Channel): Promise<string | null> {
+export async function createAutomatedJob(channel: Channel): Promise<string | null> {
   const timezone = channel.automation?.timeZone || DEFAULT_TIMEZONE;
   const runId = `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
@@ -252,21 +253,22 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
       `[Automation] ✅ Created automated job ${job.id} for channel ${channel.id}`
     );
 
-    // Обновляем lastRunAt и пересчитываем nextRunAt
+    // Обновляем lastRunAt и пересчитываем nextRunAt только после успешного создания задачи
     const { calculateNextRunAt } = await import("../utils/automationSchedule");
     
     if (channel.automation) {
+      const now = Date.now();
       const nextRunAt = calculateNextRunAt(
         channel.automation.times,
         channel.automation.daysOfWeek,
         timezone,
-        Date.now()
+        now // Используем текущее время как lastRunAt для расчета следующего
       );
       
       await updateChannel(channel.id, {
         automation: {
           ...channel.automation,
-          lastRunAt: Date.now(),
+          lastRunAt: now,
           nextRunAt,
           isRunning: true,
           runId,
@@ -276,7 +278,11 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
       if (nextRunAt) {
         const nextRunString = formatDateInTimezone(nextRunAt, timezone);
         console.log(
-          `[Automation] Next run scheduled for: ${nextRunString} (${timezone})`
+          `[Automation] ✅ Last run: ${timeString}, Next run scheduled for: ${nextRunString} (${timezone})`
+        );
+      } else {
+        console.log(
+          `[Automation] ⚠️ Last run: ${timeString}, but next run could not be calculated`
         );
       }
     }
@@ -338,6 +344,66 @@ async function createAutomatedJob(channel: Channel): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * POST /api/channels/:channelId/automation/run-now
+ * Ручной запуск автоматизации для конкретного канала (независимо от расписания)
+ */
+router.post("/channels/:channelId/run-now", async (req: Request, res: Response) => {
+  try {
+    const { channelId } = req.params;
+    
+    console.log(`[Automation] Manual run requested for channel ${channelId}`);
+    
+    // Получаем канал
+    const channel = await getChannelById(channelId);
+    if (!channel) {
+      return res.status(404).json({
+        error: "Канал не найден",
+      });
+    }
+    
+    // Проверяем, включена ли автоматизация
+    if (!channel.automation || !channel.automation.enabled) {
+      return res.status(400).json({
+        error: "Автоматизация не включена для этого канала",
+      });
+    }
+    
+    // Проверяем, не выполняется ли уже автоматизация
+    if (channel.automation.isRunning) {
+      return res.status(400).json({
+        error: "Автоматизация уже выполняется для этого канала",
+      });
+    }
+    
+    // Запускаем автоматизацию (игнорируя проверку времени/дней недели)
+    const jobId = await createAutomatedJob(channel);
+    
+    if (!jobId) {
+      return res.status(500).json({
+        error: "Не удалось создать задачу автоматизации",
+        message: "Возможно, достигнут лимит активных задач",
+      });
+    }
+    
+    console.log(`[Automation] ✅ Manual run completed for channel ${channelId}, job ${jobId}`);
+    
+    res.json({
+      success: true,
+      message: "Автоматизация запущена",
+      jobId,
+      channelId: channel.id,
+      channelName: channel.name,
+    });
+  } catch (error: any) {
+    console.error(`[Automation] Error in manual run for channel ${req.params.channelId}:`, error);
+    res.status(500).json({
+      error: "Ошибка при запуске автоматизации",
+      message: error.message,
+    });
+  }
+});
 
 /**
  * POST /api/automation/run-scheduled

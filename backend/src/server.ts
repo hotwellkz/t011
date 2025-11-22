@@ -12,6 +12,7 @@ import fcmRouter from "./api/fcm";
 import automationRouter from "./api/automation";
 import { getTelegramClient } from "./telegram/client";
 import { initializeFirebase } from "./firebase/admin";
+import * as cron from "node-cron";
 
 // Загружаем переменные окружения
 // Пытаемся загрузить из разных возможных мест
@@ -104,5 +105,144 @@ if (process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH) {
 app.listen(PORT, () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   console.log(`📡 API доступен по адресу http://localhost:${PORT}/api`);
+  
+  // Запускаем планировщик автоматизации
+  // Проверяем каждые 5 минут, нужно ли запускать автоматизацию
+  // Используем cron: "*/5 * * * *" - каждые 5 минут
+  const automationSchedule = process.env.AUTOMATION_SCHEDULE || "*/5 * * * *";
+  
+  cron.schedule(automationSchedule, async () => {
+    try {
+      // Вызываем функцию напрямую, а не через HTTP
+      const { default: automationRouter } = await import("./api/automation");
+      const { getAllChannels } = await import("./models/channel");
+      const {
+        getCurrentTimeComponentsInTimezone,
+        getDayOfWeekInTimezone,
+        DEFAULT_TIMEZONE,
+        formatDateInTimezone,
+      } = await import("./utils/automationSchedule");
+      
+      const currentTimeUTC = new Date();
+      const timeString = formatDateInTimezone(Date.now(), DEFAULT_TIMEZONE);
+      
+      console.log("[Automation Scheduler] Running scheduled automation check...");
+      console.log(`[Automation Scheduler] UTC time: ${currentTimeUTC.toISOString()}`);
+      console.log(`[Automation Scheduler] ${DEFAULT_TIMEZONE} time: ${timeString}`);
+      
+      const intervalMinutes = 10;
+      const channels = await getAllChannels();
+      const enabledChannels = channels.filter(
+        (ch) => ch.automation?.enabled === true
+      );
+      
+      console.log(
+        `[Automation Scheduler] Found ${enabledChannels.length} channels with automation enabled`
+      );
+      
+      // Импортируем функции для проверки и создания задач
+      const automationModule = await import("./api/automation");
+      const createAutomatedJob = automationModule.createAutomatedJob;
+      
+      let jobsCreated = 0;
+      for (const channel of enabledChannels) {
+        try {
+          const timezone = channel.automation?.timeZone || DEFAULT_TIMEZONE;
+          const currentTimeComponents = getCurrentTimeComponentsInTimezone(timezone);
+          const currentTimeUTC = new Date();
+          
+          // Проверяем день недели
+          const [currentDay, currentDayNumber] = getDayOfWeekInTimezone(
+            currentTimeUTC,
+            timezone
+          );
+          const isDayMatch =
+            channel.automation?.daysOfWeek.includes(currentDay) ||
+            channel.automation?.daysOfWeek.includes(currentDayNumber);
+          
+          if (!isDayMatch) {
+            continue;
+          }
+          
+          // Проверяем время
+          const currentHour = currentTimeComponents.hour;
+          const currentMinute = currentTimeComponents.minute;
+          
+          let shouldRun = false;
+          for (const scheduledTime of channel.automation?.times || []) {
+            if (!scheduledTime || scheduledTime.trim() === "") {
+              continue;
+            }
+            
+            const [scheduledHour, scheduledMinute] = scheduledTime
+              .split(":")
+              .map(Number);
+            
+            const diffMinutes =
+              (currentHour * 60 + currentMinute) - (scheduledHour * 60 + scheduledMinute);
+            
+            if (diffMinutes >= 0 && diffMinutes <= intervalMinutes) {
+              // Проверяем, не было ли уже запуска сегодня
+              if (channel.automation?.lastRunAt) {
+                const lastRunDate = new Date(channel.automation.lastRunAt);
+                const lastRunFormatter = new Intl.DateTimeFormat("en-US", {
+                  timeZone: timezone,
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                });
+                const lastRunParts = lastRunFormatter.formatToParts(lastRunDate);
+                const lastRunYear = parseInt(lastRunParts.find((p) => p.type === "year")!.value);
+                const lastRunMonth = parseInt(lastRunParts.find((p) => p.type === "month")!.value) - 1;
+                const lastRunDay = parseInt(lastRunParts.find((p) => p.type === "day")!.value);
+                const lastRunHour = parseInt(lastRunParts.find((p) => p.type === "hour")!.value);
+                const lastRunMinute = parseInt(lastRunParts.find((p) => p.type === "minute")!.value);
+                
+                if (
+                  lastRunYear === currentTimeComponents.year &&
+                  lastRunMonth === currentTimeComponents.month &&
+                  lastRunDay === currentTimeComponents.day &&
+                  lastRunHour === scheduledHour &&
+                  lastRunMinute === scheduledMinute
+                ) {
+                  continue;
+                }
+              }
+              shouldRun = true;
+              break;
+            }
+          }
+          
+          if (shouldRun && !channel.automation?.isRunning) {
+            console.log(
+              `[Automation Scheduler] Channel ${channel.id} (${channel.name}) should run automation (timezone: ${timezone})`
+            );
+            const jobId = await createAutomatedJob(channel);
+            if (jobId) {
+              jobsCreated++;
+            }
+          }
+        } catch (error: any) {
+          console.error(
+            `[Automation Scheduler] Error processing channel ${channel.id}:`,
+            error
+          );
+        }
+      }
+      
+      console.log(
+        `[Automation Scheduler] ✅ Check completed: ${enabledChannels.length} channels processed, ${jobsCreated} jobs created`
+      );
+    } catch (error: any) {
+      console.error("[Automation Scheduler] Error:", error.message);
+    }
+  }, {
+    timezone: "Asia/Almaty", // Используем Asia/Almaty для планировщика
+  });
+  
+  console.log(`⏰ Планировщик автоматизации запущен (расписание: ${automationSchedule}, timezone: Asia/Almaty)`);
 });
 
