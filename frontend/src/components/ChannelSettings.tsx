@@ -549,6 +549,7 @@ const ChannelSettings: React.FC = () => {
                 <div className="automation-days">
                   {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => {
                     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    const dayFullNames = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
                     const dayNumber = String(index + 1)
                     const isChecked = formData.automation.daysOfWeek.includes(dayNames[index]) || 
                                      formData.automation.daysOfWeek.includes(dayNumber)
@@ -574,14 +575,26 @@ const ChannelSettings: React.FC = () => {
                           })
                         }}
                         disabled={!formData.automation.enabled}
-                        aria-pressed={isChecked}
+                        role="switch"
+                        aria-checked={isChecked}
+                        aria-label={`Автоматизация ${dayFullNames[index]}`}
                       >
-                        {day}
+                        {isChecked && <span className="automation-day-chip__check">✓</span>}
+                        <span className="automation-day-chip__text">{day}</span>
                       </button>
                     )
                   })}
                 </div>
-                <small className="automation-hint">В какие дни автоматизация должна запускать создание роликов</small>
+                <small className="automation-hint automation-hint--days">
+                  Нажмите на день, чтобы включить или выключить автоматизацию.
+                  <br />
+                  <strong>Синие кнопки — день включён.</strong>
+                </small>
+                {formData.automation.daysOfWeek.length === 0 && formData.automation.enabled && (
+                  <div className="automation-days-warning">
+                    Выберите хотя бы один день, иначе автоматизация не запустится.
+                  </div>
+                )}
               </div>
 
               <div className="automation-options">
