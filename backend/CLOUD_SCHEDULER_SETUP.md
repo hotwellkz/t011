@@ -94,39 +94,70 @@ gcloud scheduler jobs create http automation-run-scheduled `
 
 ### Шаг 3: Настройте аутентификацию (если требуется)
 
+**⚠️ ВАЖНО:** Если ваш Cloud Run сервис публичный (`--allow-unauthenticated`), аутентификация не требуется, и этот шаг можно пропустить.
+
 Если ваш Cloud Run сервис требует аутентификацию:
 
-**Для Linux/Mac (bash):**
+**1. Получите ваш Project ID:**
+
+**Bash/PowerShell:**
 ```bash
-# Создайте service account
+gcloud config get-value project
+```
+
+Или:
+```bash
+gcloud projects list --format="value(projectId)"
+```
+
+**2. Создайте service account (если еще не создан):**
+
+**Bash:**
+```bash
 gcloud iam service-accounts create automation-scheduler \
   --display-name="Automation Scheduler"
+```
 
-# Дайте права на вызов Cloud Run
+**PowerShell:**
+```powershell
+gcloud iam service-accounts create automation-scheduler --display-name="Automation Scheduler"
+```
+
+**3. Дайте права на вызов Cloud Run:**
+
+**Bash:**
+```bash
 gcloud run services add-iam-policy-binding whitecoding-backend \
   --region=europe-central2 \
   --member="serviceAccount:automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/run.invoker"
+```
 
-# Обновите job с service account
+**PowerShell:**
+```powershell
+gcloud run services add-iam-policy-binding whitecoding-backend --region=europe-central2 --member="serviceAccount:automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com" --role="roles/run.invoker"
+```
+
+**⚠️ Замените `YOUR_PROJECT_ID` на ваш реальный Project ID!**
+
+**4. Обновите job с service account:**
+
+**Bash:**
+```bash
 gcloud scheduler jobs update http automation-run-scheduled \
   --location=europe-central2 \
   --oauth-service-account-email="automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com"
 ```
 
-**Для Windows PowerShell:**
+**PowerShell:**
 ```powershell
-# Создайте service account
-gcloud iam service-accounts create automation-scheduler --display-name="Automation Scheduler"
-
-# Дайте права на вызов Cloud Run
-gcloud run services add-iam-policy-binding whitecoding-backend --region=europe-central2 --member="serviceAccount:automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com" --role="roles/run.invoker"
-
-# Обновите job с service account
 gcloud scheduler jobs update http automation-run-scheduled --location=europe-central2 --oauth-service-account-email="automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com"
 ```
 
-**Если сервис публичный (`--allow-unauthenticated`):** аутентификация не требуется.
+**Пример с реальным Project ID (videobot-478618):**
+```powershell
+gcloud run services add-iam-policy-binding whitecoding-backend --region=europe-central2 --member="serviceAccount:automation-scheduler@videobot-478618.iam.gserviceaccount.com" --role="roles/run.invoker"
+```
 
 ### Шаг 4: Проверьте работу
 
