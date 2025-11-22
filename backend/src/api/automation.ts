@@ -418,11 +418,11 @@ router.post("/channels/:channelId/run-now", async (req: Request, res: Response) 
  * Этот endpoint должен вызываться Cloud Scheduler каждые 5 минут.
  * 
  * Настройка Cloud Scheduler:
- * gcloud scheduler jobs create http automation-run-scheduled \
- *   --location=europe-central2 \
- *   --schedule="*/5 * * * *" \
- *   --uri="https://YOUR_SERVICE_URL/api/automation/run-scheduled" \
- *   --http-method=POST \
+ * gcloud scheduler jobs create http automation-run-scheduled
+ *   --location=europe-central2
+ *   --schedule="каждые 5 минут"
+ *   --uri="https://YOUR_SERVICE_URL/api/automation/run-scheduled"
+ *   --http-method=POST
  *   --time-zone="Asia/Almaty"
  * 
  * См. CLOUD_SCHEDULER_SETUP.md для подробной инструкции.
