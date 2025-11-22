@@ -27,9 +27,22 @@ Cloud Scheduler — это управляемый сервис, который:
 
 ### Шаг 1: Получите URL вашего Cloud Run сервиса
 
+**Для Linux/Mac (bash):**
 ```bash
 gcloud run services describe whitecoding-backend \
   --region=europe-central2 \
+  --format="value(status.url)"
+```
+
+**Для Windows PowerShell:**
+```powershell
+gcloud run services describe whitecoding-backend --region=europe-central2 --format="value(status.url)"
+```
+
+Или используйте обратный апостроф для многострочной команды в PowerShell:
+```powershell
+gcloud run services describe whitecoding-backend `
+  --region=europe-central2 `
   --format="value(status.url)"
 ```
 
@@ -39,6 +52,7 @@ gcloud run services describe whitecoding-backend \
 
 ### Шаг 2: Создайте Cloud Scheduler Job
 
+**Для Linux/Mac (bash):**
 ```bash
 gcloud scheduler jobs create http automation-run-scheduled \
   --location=europe-central2 \
@@ -51,6 +65,26 @@ gcloud scheduler jobs create http automation-run-scheduled \
   --description="Запуск автоматизации роликов каждые 5 минут"
 ```
 
+**Для Windows PowerShell (одна строка):**
+```powershell
+gcloud scheduler jobs create http automation-run-scheduled --location=europe-central2 --schedule="*/5 * * * *" --uri="https://whitecoding-backend-487498983516.europe-central2.run.app/api/automation/run-scheduled" --http-method=POST --headers="Content-Type=application/json" --time-zone="Asia/Almaty" --attempt-deadline=300s --description="Запуск автоматизации роликов каждые 5 минут"
+```
+
+**Для Windows PowerShell (многострочная команда с обратным апострофом):**
+```powershell
+gcloud scheduler jobs create http automation-run-scheduled `
+  --location=europe-central2 `
+  --schedule="*/5 * * * *" `
+  --uri="https://whitecoding-backend-487498983516.europe-central2.run.app/api/automation/run-scheduled" `
+  --http-method=POST `
+  --headers="Content-Type=application/json" `
+  --time-zone="Asia/Almaty" `
+  --attempt-deadline=300s `
+  --description="Запуск автоматизации роликов каждые 5 минут"
+```
+
+**⚠️ ВАЖНО:** В PowerShell используйте обратный апостроф `` ` `` (не обратный слэш `\`) для продолжения строки!
+
 **Параметры:**
 - `automation-run-scheduled` — имя job (можно изменить)
 - `--schedule="*/5 * * * *"` — каждые 5 минут (cron формат)
@@ -62,6 +96,7 @@ gcloud scheduler jobs create http automation-run-scheduled \
 
 Если ваш Cloud Run сервис требует аутентификацию:
 
+**Для Linux/Mac (bash):**
 ```bash
 # Создайте service account
 gcloud iam service-accounts create automation-scheduler \
@@ -79,41 +114,82 @@ gcloud scheduler jobs update http automation-run-scheduled \
   --oauth-service-account-email="automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com"
 ```
 
+**Для Windows PowerShell:**
+```powershell
+# Создайте service account
+gcloud iam service-accounts create automation-scheduler --display-name="Automation Scheduler"
+
+# Дайте права на вызов Cloud Run
+gcloud run services add-iam-policy-binding whitecoding-backend --region=europe-central2 --member="serviceAccount:automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com" --role="roles/run.invoker"
+
+# Обновите job с service account
+gcloud scheduler jobs update http automation-run-scheduled --location=europe-central2 --oauth-service-account-email="automation-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com"
+```
+
 **Если сервис публичный (`--allow-unauthenticated`):** аутентификация не требуется.
 
 ### Шаг 4: Проверьте работу
 
 1. **Проверьте статус job:**
+
+**Bash:**
 ```bash
 gcloud scheduler jobs describe automation-run-scheduled \
   --location=europe-central2
 ```
 
+**PowerShell:**
+```powershell
+gcloud scheduler jobs describe automation-run-scheduled --location=europe-central2
+```
+
 2. **Запустите job вручную для теста:**
+
+**Bash:**
 ```bash
 gcloud scheduler jobs run automation-run-scheduled \
   --location=europe-central2
 ```
 
+**PowerShell:**
+```powershell
+gcloud scheduler jobs run automation-run-scheduled --location=europe-central2
+```
+
 3. **Проверьте логи Cloud Run:**
+
+**Bash:**
 ```bash
 gcloud run services logs read whitecoding-backend \
   --region=europe-central2 \
   --limit=50
 ```
 
+**PowerShell:**
+```powershell
+gcloud run services logs read whitecoding-backend --region=europe-central2 --limit=50
+```
+
 Должны увидеть:
 ```
-[Automation] Running scheduled automation check...
+[Automation] ===== SCHEDULED AUTOMATION CHECK STARTED =====
 [Automation] UTC time: 2025-11-22T...
 [Automation] Found X channels with automation enabled
+[Automation] ===== SCHEDULED AUTOMATION CHECK COMPLETED =====
 ```
 
 4. **Проверьте логи Cloud Scheduler:**
+
+**Bash:**
 ```bash
 gcloud logging read "resource.type=cloud_scheduler_job AND resource.labels.job_id=automation-run-scheduled" \
   --limit=10 \
   --format=json
+```
+
+**PowerShell:**
+```powershell
+gcloud logging read "resource.type=cloud_scheduler_job AND resource.labels.job_id=automation-run-scheduled" --limit=10 --format=json
 ```
 
 ---
@@ -122,10 +198,16 @@ gcloud logging read "resource.type=cloud_scheduler_job AND resource.labels.job_i
 
 Если нужно изменить частоту проверки (например, каждые 1 минуту):
 
+**Bash:**
 ```bash
 gcloud scheduler jobs update http automation-run-scheduled \
   --location=europe-central2 \
   --schedule="*/1 * * * *"
+```
+
+**PowerShell:**
+```powershell
+gcloud scheduler jobs update http automation-run-scheduled --location=europe-central2 --schedule="*/1 * * * *"
 ```
 
 **Варианты расписания:**
@@ -140,9 +222,15 @@ gcloud scheduler jobs update http automation-run-scheduled \
 
 Если нужно удалить планировщик:
 
+**Bash:**
 ```bash
 gcloud scheduler jobs delete automation-run-scheduled \
   --location=europe-central2
+```
+
+**PowerShell:**
+```powershell
+gcloud scheduler jobs delete automation-run-scheduled --location=europe-central2
 ```
 
 ---
@@ -169,18 +257,29 @@ gcloud scheduler jobs delete automation-run-scheduled \
 ### Job не запускается
 
 1. Проверьте статус job:
+
+**Bash/PowerShell:**
 ```bash
 gcloud scheduler jobs describe automation-run-scheduled --location=europe-central2
 ```
 
 2. Проверьте логи Cloud Scheduler:
+
+**Bash/PowerShell:**
 ```bash
 gcloud logging read "resource.type=cloud_scheduler_job AND resource.labels.job_id=automation-run-scheduled" --limit=20
 ```
 
 3. Убедитесь, что URL правильный и доступен:
+
+**Bash (curl):**
 ```bash
 curl -X POST https://whitecoding-backend-487498983516.europe-central2.run.app/api/automation/run-scheduled
+```
+
+**PowerShell (Invoke-WebRequest):**
+```powershell
+Invoke-WebRequest -Uri "https://whitecoding-backend-487498983516.europe-central2.run.app/api/automation/run-scheduled" -Method POST
 ```
 
 ### Job запускается, но автоматизация не работает
