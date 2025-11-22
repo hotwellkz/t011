@@ -33,14 +33,20 @@ export async function getAllChannels(): Promise<Channel[]> {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[Firebase] ❌ Error getting channels:", errorMessage);
+    console.error("[Firebase] ❌ Error stack:", error instanceof Error ? error.stack : "No stack");
     
-    // Если Firebase не настроен, возвращаем пустой массив вместо ошибки
-    if (errorMessage.includes("Firebase не инициализирован") || errorMessage.includes("FIREBASE_")) {
+    // Если Firebase не настроен или любая другая ошибка, возвращаем пустой массив
+    // Это предотвращает закрытие соединения и позволяет фронтенду обработать ситуацию
+    if (errorMessage.includes("Firebase не инициализирован") || 
+        errorMessage.includes("FIREBASE_") ||
+        errorMessage.includes("Firebase не инициализирован")) {
       console.warn("[Firebase] ⚠️  Firebase не настроен, возвращаем пустой массив каналов");
       return [];
     }
     
-    throw new Error(`Ошибка получения каналов: ${errorMessage}`);
+    // Для любых других ошибок также возвращаем пустой массив, чтобы не ломать фронтенд
+    console.warn("[Firebase] ⚠️  Ошибка получения каналов, возвращаем пустой массив:", errorMessage);
+    return [];
   }
 }
 

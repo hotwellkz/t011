@@ -50,22 +50,34 @@ export function initializeFirebase(): admin.app.App {
  * @throws Error если Firebase не инициализирован
  */
 export function getFirestore(): admin.firestore.Firestore {
-  if (!firebaseApp) {
-    try {
-      initializeFirebase();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("[Firebase] ❌ Не удалось инициализировать Firebase:", errorMessage);
-      throw new Error(
-        `Firebase не инициализирован. Проверьте переменные окружения FIREBASE_*. Ошибка: ${errorMessage}`
-      );
+  try {
+    if (!firebaseApp) {
+      try {
+        initializeFirebase();
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[Firebase] ❌ Не удалось инициализировать Firebase:", errorMessage);
+        if (error instanceof Error && error.stack) {
+          console.error("[Firebase] Stack:", error.stack);
+        }
+        throw new Error(
+          `Firebase не инициализирован. Проверьте переменные окружения FIREBASE_*. Ошибка: ${errorMessage}`
+        );
+      }
     }
+    
+    if (!firebaseApp) {
+      throw new Error("Firebase не инициализирован. Установите переменные окружения FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL");
+    }
+    
+    return admin.firestore();
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[Firebase] ❌ Критическая ошибка в getFirestore():", errorMessage);
+    if (error instanceof Error && error.stack) {
+      console.error("[Firebase] Stack:", error.stack);
+    }
+    throw error;
   }
-  
-  if (!firebaseApp) {
-    throw new Error("Firebase не инициализирован. Установите переменные окружения FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL");
-  }
-  
-  return admin.firestore();
 }
 

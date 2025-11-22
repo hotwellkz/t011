@@ -29,6 +29,23 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+// Middleware для логирования запросов (для отладки)
+app.use((req, res, next) => {
+  console.log(`[HTTP] ${req.method} ${req.path}`);
+  next();
+});
+
+// Middleware для обработки ошибок
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("[Express Error Handler] Ошибка:", err);
+  if (!res.headersSent) {
+    res.status(500).json({
+      error: "Внутренняя ошибка сервера",
+      details: err.message || String(err)
+    });
+  }
+});
+
 // API Routes
 app.use("/api/channels", channelsRouter);
 app.use("/api/ideas", ideasRouter);
@@ -100,6 +117,21 @@ if (process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH) {
     }
   })();
 }
+
+// Обработка необработанных исключений и отклоненных промисов
+process.on("uncaughtException", (error: Error) => {
+  console.error("[CRITICAL] Необработанное исключение:", error);
+  console.error("[CRITICAL] Stack:", error.stack);
+  // Не завершаем процесс, чтобы сервер продолжал работать
+});
+
+process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
+  console.error("[CRITICAL] Необработанное отклонение промиса:", reason);
+  if (reason instanceof Error) {
+    console.error("[CRITICAL] Stack:", reason.stack);
+  }
+  // Не завершаем процесс, чтобы сервер продолжал работать
+});
 
 // Запуск сервера
 app.listen(PORT, () => {

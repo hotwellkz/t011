@@ -12,26 +12,56 @@ const router = Router();
 
 // GET /api/channels
 router.get("/", async (req: Request, res: Response) => {
-  try {
-    const channels = await getAllChannels();
-    res.json(channels);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[API] Ошибка при получении каналов:", errorMessage);
-    
-    // Если это ошибка Firebase, возвращаем более детальное сообщение
-    if (errorMessage.includes("Firebase не инициализирован") || errorMessage.includes("FIREBASE_")) {
-      console.error("[API] Firebase credentials отсутствуют или неверны");
-      return res.status(500).json({ 
-        error: "Firebase не настроен. Проверьте переменные окружения FIREBASE_* в Cloud Run.",
-        details: errorMessage 
+  // Устанавливаем таймаут для запроса (30 секунд)
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      console.error("[API] Таймаут запроса GET /api/channels");
+      res.status(504).json({ 
+        error: "Таймаут запроса",
+        details: "Запрос превысил максимальное время ожидания"
       });
     }
+  }, 30000);
+
+  try {
+    console.log("[API] GET /api/channels - запрос получен");
+    const channels = await getAllChannels();
+    console.log(`[API] GET /api/channels - получено ${channels.length} каналов`);
     
-    res.status(500).json({ 
-      error: "Ошибка при получении каналов",
-      details: errorMessage 
-    });
+    // Отменяем таймаут, если запрос успешно выполнен
+    clearTimeout(timeout);
+    
+    // Убеждаемся, что ответ отправляется
+    if (!res.headersSent) {
+      res.json(channels);
+    }
+  } catch (error: unknown) {
+    // Отменяем таймаут при ошибке
+    clearTimeout(timeout);
+    
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("[API] Ошибка при получении каналов:", errorMessage);
+    if (errorStack) {
+      console.error("[API] Stack trace:", errorStack);
+    }
+    
+    // Убеждаемся, что ответ отправляется даже при ошибке
+    if (!res.headersSent) {
+      // Если это ошибка Firebase, возвращаем более детальное сообщение
+      if (errorMessage.includes("Firebase не инициализирован") || errorMessage.includes("FIREBASE_")) {
+        console.error("[API] Firebase credentials отсутствуют или неверны");
+        res.status(500).json({ 
+          error: "Firebase не настроен. Проверьте переменные окружения FIREBASE_* в Cloud Run.",
+          details: errorMessage 
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Ошибка при получении каналов",
+          details: errorMessage 
+        });
+      }
+    }
   }
 });
 
