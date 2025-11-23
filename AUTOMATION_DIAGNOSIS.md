@@ -240,3 +240,4 @@ gcloud scheduler jobs describe automation-run-scheduled --location=europe-centra
 - **Endpoint для scheduled запуска:** `POST /api/automation/run-scheduled`
 - **Локальная разработка:** установите `ENABLE_LOCAL_CRON=true` в `.env` (только для dev!)
 
+

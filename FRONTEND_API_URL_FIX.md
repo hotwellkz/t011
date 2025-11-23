@@ -84,3 +84,4 @@ VITE_API_URL=https://whitecoding-backend-q3ppvpw4sa-lm.a.run.app
 - Всегда используйте команду `gcloud run services describe` для получения актуального URL
 - Обновляйте `VITE_API_URL` на Netlify после каждого передеплоя backend
 
+

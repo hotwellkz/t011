@@ -18,7 +18,7 @@ const router = Router();
  */
 function shouldRunAutomation(
   channel: Channel,
-  intervalMinutes: number = 10
+  intervalMinutes: number = 6
 ): boolean {
   if (!channel.automation || !channel.automation.enabled) {
     return false;
@@ -441,7 +441,7 @@ router.post("/run-scheduled", async (req: Request, res: Response) => {
     console.log(`[Automation] ${DEFAULT_TIMEZONE} time: ${timeString}`);
     console.log("=".repeat(80));
     
-    const intervalMinutes = 10; // Интервал проверки (10 минут)
+    const intervalMinutes = 6; // Интервал проверки (6 минут) - больше чем частота Scheduler (5 минут), чтобы гарантировать попадание
 
     // Получаем все каналы
     const channels = await getAllChannels();

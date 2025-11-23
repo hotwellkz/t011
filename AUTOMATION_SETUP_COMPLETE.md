@@ -123,3 +123,4 @@ gcloud scheduler jobs describe automation-run-scheduled --location=europe-centra
 **Дата настройки:** 2025-11-22  
 **Проект:** videobot-478618
 
+
